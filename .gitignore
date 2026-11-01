@@ -1,0 +1,7 @@
+/target
+/.superpowers/
+*.db
+*.db-shm
+*.db-wal
+.env
+docs/dev/
