@@ -13,7 +13,7 @@ briefly when writing code, and leave marked learning hooks to him.
 
 | Tool | Version | Where pinned |
 | ---- | ------- | ------------ |
-| Rust | 1.99.1 (edition 2024) | `.github/workflows/ci.yml` `RUST_VERSION` |
+| Rust | 1.100.0 (edition 2024) | `.github/workflows/ci.yml` `RUST_VERSION` |
 | `actions/checkout` | v7 | CI |
 | `Swatinem/rust-cache` | v2 | CI |
 
