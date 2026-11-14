@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT article_id FROM bot_reply WHERE telegram_message_id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "article_id",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "bot_reply",
+            "name": "article_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a053fc1a6c4b014c10c637ec8c931361d060ea2759abaece29ee089dab06a0f3"
+}

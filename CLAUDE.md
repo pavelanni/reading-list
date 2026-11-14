@@ -30,6 +30,26 @@ When upgrading local Rust, update `RUST_VERSION` in CI in the same commit.
 
 Run all four before every commit.
 
+## Crates
+
+| Crate | Version | Notes |
+| ----- | ------- | ----- |
+| `sqlx` | 0.9.0 | `sqlite` (bundled, FTS5), `macros`, `migrate`, `chrono` |
+| `serde` | 1.0 | `derive` |
+| `chrono` | 0.4 | `clock`, `serde` |
+
+## Database and sqlx
+
+SQL lives only in `src/db/`; schema in `migrations/`. Queries use the
+compile-time checked `query!` macros. Without `DATABASE_URL` they read
+the committed `.sqlx/` cache (that is how CI builds).
+
+After changing a query or migration:
+
+1. `echo 'DATABASE_URL=sqlite:dev.db' > .env` (gitignored, once)
+1. `sqlx database reset -y` (recreate `dev.db` from migrations)
+1. `cargo sqlx prepare -- --all-targets` and commit `.sqlx/`
+
 ## Conventions
 
 - Secrets only from environment variables; never log them (`Config`

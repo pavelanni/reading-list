@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT OR IGNORE INTO bot_reply (telegram_message_id, article_id) VALUES (?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "c89bbdfdd89159a55eda2ea6ebd1bf65bf400f07c63116ded3454d4362c1151b"
+}

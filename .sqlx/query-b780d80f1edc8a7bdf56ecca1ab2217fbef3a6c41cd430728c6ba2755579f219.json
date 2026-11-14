@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET share_text = COALESCE(share_text, ?) WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "b780d80f1edc8a7bdf56ecca1ab2217fbef3a6c41cd430728c6ba2755579f219"
+}
