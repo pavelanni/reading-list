@@ -39,6 +39,7 @@ Run all four before every commit.
 | `chrono` | 0.4 | `clock`, `serde` |
 | `url` | 2.5 | |
 | `reqwest` | 0.13 | `rustls` only (aws-lc-rs backend, needs a C toolchain) |
+| `teloxide` | 0.17 | `rustls` only; brings its own reqwest 0.12 |
 | `wiremock` | 0.6 | dev: HTTP mocks |
 
 ## Database and sqlx
