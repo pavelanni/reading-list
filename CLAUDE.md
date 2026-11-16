@@ -37,6 +37,9 @@ Run all four before every commit.
 | `sqlx` | 0.9.0 | `sqlite` (bundled, FTS5), `macros`, `migrate`, `chrono` |
 | `serde` | 1.0 | `derive` |
 | `chrono` | 0.4 | `clock`, `serde` |
+| `url` | 2.5 | |
+| `reqwest` | 0.13 | `rustls` only (aws-lc-rs backend, needs a C toolchain) |
+| `wiremock` | 0.6 | dev: HTTP mocks |
 
 ## Database and sqlx
 
