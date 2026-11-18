@@ -53,8 +53,8 @@ the committed `.sqlx/` cache (that is how CI builds).
 After changing a query or migration:
 
 1. `echo 'DATABASE_URL=sqlite:dev.db' > .env` (gitignored, once)
-1. `sqlx database reset -y` (recreate `dev.db` from migrations)
-1. `cargo sqlx prepare -- --all-targets` and commit `.sqlx/`
+2. `sqlx database reset -y` (recreate `dev.db` from migrations)
+3. `cargo sqlx prepare -- --all-targets` and commit `.sqlx/`
 
 ## Conventions
 
