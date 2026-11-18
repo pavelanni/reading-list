@@ -1,6 +1,7 @@
 //! Language-model access: the [`Llm`] trait and its OpenRouter implementation.
 
 mod client;
+pub mod prompts;
 
 pub use client::OpenRouterClient;
 

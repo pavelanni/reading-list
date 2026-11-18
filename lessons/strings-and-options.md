@@ -65,6 +65,24 @@ patterns?" when you only need a `bool`.
 up to 4 for an emoji. For a minimum text length, as in `extract` in
 `src/fetch.rs`, count characters: `text.chars().count()`.
 
+Slicing works on bytes too: `&text[..n]` **panics** if byte `n` falls
+inside a character ("byte index is not a char boundary"). To cut after
+`max` characters, as in `truncate_chars` in `src/llm/prompts.rs`, ask
+`text.char_indices().nth(max)` for the byte position of the first
+character you drop. `None` means the text is already short enough.
+
+The result `&text[..i]` is a borrowed slice, so nothing is copied.
+Lifetime elision ties it to `text`, the only reference parameter.
+
+## Untrusted text: escape, don't parse
+
+Text from outside (a web page, a model's earlier answer) is data, never
+structure. `data_block` in `src/llm/prompts.rs` does not look for tags
+in the content; it escapes `<` so the content cannot form any tag, then
+wraps it in a tag that comes from our code. Escape the content only,
+and in one place, so nothing is escaped twice or missed. sqlx bind
+parameters follow the same rule.
+
 ## `dedup` only removes neighbours
 
 `Vec::dedup()` removes *consecutive* duplicates, so it works only after

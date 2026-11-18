@@ -33,6 +33,27 @@ pub enum StoryStatus {
     Dropped,
 }
 
+impl StoryKind {
+    /// The lowercase name used in the database, JSON and prompts.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            StoryKind::News => "news",
+            StoryKind::Idea => "idea",
+        }
+    }
+}
+
+impl StoryStatus {
+    /// The lowercase name used in the database, JSON and prompts.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            StoryStatus::Unread => "unread",
+            StoryStatus::Read => "read",
+            StoryStatus::Dropped => "dropped",
+        }
+    }
+}
+
 /// Handle to the database. Cheap to clone: the pool is reference-counted.
 #[derive(Clone)]
 pub struct Db {
