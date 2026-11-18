@@ -61,3 +61,5 @@ After changing a query or migration:
 - Secrets only from environment variables; never log them (`Config`
   has a redacting `Debug`).
 - Pure logic separated from I/O so it is testable without network.
+- When explaining a Rust gotcha or practice, add it to the matching file
+  in `lessons/` (index in `lessons/README.md`).
