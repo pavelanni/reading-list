@@ -41,3 +41,10 @@ CREATE TRIGGER article_fts_update AFTER UPDATE OF title, extracted_text ON artic
 `UPDATE OF <columns>` limits the trigger to changes in those columns. Without
 it, every status change would delete and re-insert the article in the
 full-text index. Seen in: `migrations/0001_init.sql`.
+
+## Default features can hide helpers
+
+reqwest with `default-features = false` has no `RequestBuilder::json`: the
+compiler says `no method named json found`. Methods behind a feature flag
+simply do not exist until you enable the feature (`features = ["json"]`).
+When a documented method is "missing", check the crate's feature list first.

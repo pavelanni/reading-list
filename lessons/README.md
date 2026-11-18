@@ -11,7 +11,7 @@ the example in context.
 | [Errors](errors.md) | `?` and `From`, `thiserror` vs `anyhow`, error source chains |
 | [Async and Tokio](async-and-tokio.md) | Blocking work, `Send`, async traits, shared state, streaming bodies |
 | [Testing](testing.md) | Tests that pass too early, pure core and thin shell, mock server traps |
-| [sqlx and SQLite](sqlx-and-sqlite.md) | Compile-time checked queries, offline cache, transactions, in-memory pools |
+| [sqlx and SQLite](sqlx-and-sqlite.md) | Compile-time checked queries, offline cache, transactions, feature flags |
 
 ## How to use these
 

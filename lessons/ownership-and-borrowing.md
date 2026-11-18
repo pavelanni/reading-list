@@ -89,3 +89,22 @@ Seen in: `is_tracking` in `src/ingest/normalize.rs`.
 Iterating `&[&str]` yields `&&str`. Method calls auto-deref, so
 `p.strip_suffix('*')` works. Comparison does not: `key == p` fails, and you
 write `key == *p`.
+
+## Structs that borrow: zero-copy serialization
+
+Seen in: `ChatRequest<'a>` in `src/llm/client.rs`.
+
+A struct can hold references if it declares a lifetime parameter. For a
+request body that is serialized once and thrown away, borrowing avoids
+copying the prompt strings:
+
+```rust
+#[derive(Serialize)]
+struct Message<'a> {
+    role: &'a str,
+    content: &'a str,
+}
+```
+
+The `'a` says: a `Message` may not outlive the strings it points to. That
+holds here, because the request is built and sent inside one function.

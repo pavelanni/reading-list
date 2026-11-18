@@ -1,6 +1,7 @@
 //! Database access. All SQL lives under this module.
 
 mod articles;
+mod calls;
 
 pub use articles::{NewArticle, SaveOutcome};
 

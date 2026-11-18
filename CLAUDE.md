@@ -36,9 +36,10 @@ Run all four before every commit.
 | ----- | ------- | ----- |
 | `sqlx` | 0.9.0 | `sqlite` (bundled, FTS5), `macros`, `migrate`, `chrono` |
 | `serde` | 1.0 | `derive` |
+| `serde_json` | 1.0 | model responses |
 | `chrono` | 0.4 | `clock`, `serde` |
 | `url` | 2.5 | |
-| `reqwest` | 0.13 | `rustls` only (aws-lc-rs backend, needs a C toolchain) |
+| `reqwest` | 0.13 | `rustls` (aws-lc-rs backend, needs a C toolchain), `json` |
 | `teloxide` | 0.17 | `rustls` only; brings its own reqwest 0.12 |
 | `thiserror` | 2.0 | typed errors (`FetchError`) |
 | `dom_smoothie` | 0.19 | Readability extraction |

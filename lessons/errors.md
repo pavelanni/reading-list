@@ -53,3 +53,10 @@ The rule here is that a saved link is never lost. When saving fails,
 `resolve_shortener` returns its input unchanged on any failure. When code
 cannot do its job, it should fall back to something visible, not drop the
 data.
+
+## Keep secrets out of `Debug`
+
+`#[derive(Debug)]` prints every field. A struct holding an API key would leak
+it in any `tracing::info!(?client)` or `{:?}` panic message. Either skip
+`Debug` on such structs (`OpenRouterClient` in `src/llm/client.rs`), or
+write it by hand and redact the secret (`Config` in `src/config.rs`).
