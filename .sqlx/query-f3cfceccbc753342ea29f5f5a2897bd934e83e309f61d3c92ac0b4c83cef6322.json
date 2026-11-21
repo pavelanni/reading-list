@@ -1,0 +1,74 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", title, kind AS \"kind: StoryKind\", summary,\n                      status AS \"status: StoryStatus\"\n               FROM story WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "kind: StoryKind",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "name": "summary",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "summary"
+          }
+        }
+      },
+      {
+        "name": "status: StoryStatus",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f3cfceccbc753342ea29f5f5a2897bd934e83e309f61d3c92ac0b4c83cef6322"
+}

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT status AS \"status: StoryStatus\" FROM story WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "status: StoryStatus",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ad1b195d1852ea5be454937be9afd89622993178ba4d98a3805dd05d82552d48"
+}

@@ -2,8 +2,10 @@
 
 mod articles;
 mod calls;
+mod stories;
 
 pub use articles::{NewArticle, SaveOutcome};
+pub use stories::{ArticleRow, StoryRow};
 
 use std::path::Path;
 use std::str::FromStr;
@@ -31,6 +33,25 @@ pub enum StoryStatus {
     Unread,
     Read,
     Dropped,
+}
+
+/// Where an article is in the processing pipeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
+#[sqlx(rename_all = "lowercase")]
+pub enum ProcessStatus {
+    Pending,
+    Processing,
+    Done,
+    Failed,
+}
+
+/// Whether the article page has been downloaded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
+#[sqlx(rename_all = "lowercase")]
+pub enum FetchStatus {
+    Pending,
+    Ok,
+    Failed,
 }
 
 impl StoryKind {

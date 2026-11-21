@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET\n                 story_id = ?, one_line_summary = ?,\n                 error = CASE WHEN fetch_status = 'failed' THEN error END,\n                 process_status = CASE WHEN note IS ? THEN 'done' ELSE 'pending' END\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "9ac6b9e5014ed765b47512909a00af53022310b7d47f0fe95d1d152bff7a2315"
+}

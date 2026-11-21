@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET process_status = 'pending'\n             WHERE id = ? AND process_status = 'processing'",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "f060f71bf06d1fbacba8891833b3becdb33f755529969d2d9e01959d31aff8dd"
+}

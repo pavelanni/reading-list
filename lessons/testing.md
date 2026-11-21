@@ -45,6 +45,12 @@ to get a dead port. It failed with `Http(404)`: wiremock *pools* servers,
 and a dropped one still listens with its mocks cleared. The fix was a port
 from `TcpListener::bind("127.0.0.1:0")` that is closed right away.
 
+The worker tests served the fixture with
+`.insert_header("Content-Type", "text/html").set_body_string(…)`, and
+every fetch failed with `not an HTML page (text/plain)`. `set_body_string`
+also sets the MIME type to `text/plain`, which overrides the header. Use
+`set_body_raw(body, "text/html")`, or `set_body_bytes` plus the header.
+
 When a test fails, print what you actually got before changing the code.
 The bug may be in the test.
 

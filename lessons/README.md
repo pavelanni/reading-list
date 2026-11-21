@@ -12,6 +12,7 @@ the example in context.
 | [Async and Tokio](async-and-tokio.md) | Blocking work, `Send`, async traits, shared state, streaming bodies |
 | [Testing](testing.md) | Tests that pass too early, pure core and thin shell, mock server traps |
 | [sqlx and SQLite](sqlx-and-sqlite.md) | Compile-time checked queries, offline cache, transactions, feature flags |
+| [Enums and match](enums-and-match.md) | `if` vs `match`, exhaustiveness, tuple patterns, `_` arms |
 | [Becoming fluent](fluency.md) | Learning the standard library and crates, clippy pedantic, `cargo tree -i` |
 
 ## How to use these

@@ -4,3 +4,5 @@ pub mod db;
 pub mod fetch;
 pub mod ingest;
 pub mod llm;
+pub mod status;
+pub mod worker;

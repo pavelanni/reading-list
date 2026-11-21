@@ -1,0 +1,110 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET process_status = 'processing'\n               WHERE id = (SELECT id FROM article WHERE process_status = 'pending'\n                           ORDER BY id LIMIT 1)\n               RETURNING id AS \"id!\", url AS \"url!\", title, extracted_text, note,\n                         share_text, fetch_status AS \"fetch_status!: FetchStatus\",\n                         attempts AS \"attempts!\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "url!",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "extracted_text",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "extracted_text"
+          }
+        }
+      },
+      {
+        "name": "note",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "note"
+          }
+        }
+      },
+      {
+        "name": "share_text",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "share_text"
+          }
+        }
+      },
+      {
+        "name": "fetch_status!: FetchStatus",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "fetch_status"
+          }
+        }
+      },
+      {
+        "name": "attempts!",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "attempts"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "436d6e3c1c861fc93b37c05a696bfa785e089413057394c49f23d43bdf3b74c8"
+}
