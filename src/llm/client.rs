@@ -78,9 +78,13 @@ struct ChoiceMessage {
     content: Option<String>,
 }
 
+/// Every field is optional: a missing count must not reject an answer
+/// that was already billed. `#[serde(default)]` fills in 0.
 #[derive(Deserialize)]
 struct ApiUsage {
+    #[serde(default)]
     prompt_tokens: u32,
+    #[serde(default)]
     completion_tokens: u32,
     cost: Option<f64>,
 }

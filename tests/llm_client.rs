@@ -116,3 +116,18 @@ async fn json_inside_code_fence_is_accepted() {
     let (value, _) = client(&server).chat_json("s", "u").await.unwrap();
     assert_eq!(value, json!({ "story_id": 3 }));
 }
+
+#[tokio::test]
+async fn usage_without_token_counts_still_parses() {
+    // The answer is valid and already billed; missing counts must not
+    // turn it into a BadResponse and a second, billed attempt.
+    let server = MockServer::start().await;
+    let mut body = completion(r#"{"story_id": 7}"#);
+    body["usage"] = json!({ "cost": 0.0001 });
+    respond(&server, ResponseTemplate::new(200).set_body_json(body)).await;
+
+    let (value, usage) = client(&server).chat_json("sys", "user").await.unwrap();
+    assert_eq!(value, json!({ "story_id": 7 }));
+    assert_eq!(usage.prompt_tokens, 0);
+    assert_eq!(usage.cost, Some(0.0001));
+}
