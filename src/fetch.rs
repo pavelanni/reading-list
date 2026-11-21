@@ -7,6 +7,8 @@ use reqwest::header::{CONTENT_TYPE, USER_AGENT};
 use thiserror::Error;
 use url::Url;
 
+use crate::net::{Blocked, WebClient};
+
 /// Largest body we download. Bigger pages are rejected, not truncated:
 /// a cut-off HTML document extracts badly.
 pub const MAX_BODY_BYTES: usize = 5 * 1024 * 1024;
@@ -40,6 +42,8 @@ pub enum FetchError {
     Network(String),
     #[error("no readable text")]
     Empty,
+    #[error(transparent)]
+    Blocked(#[from] Blocked),
 }
 
 impl From<reqwest::Error> for FetchError {
@@ -61,10 +65,10 @@ impl From<reqwest::Error> for FetchError {
 }
 
 /// Downloads `url` and extracts title and readable text.
-pub async fn fetch_article(client: &reqwest::Client, url: &Url) -> Result<Fetched, FetchError> {
+pub async fn fetch_article(client: &WebClient, url: &Url) -> Result<Fetched, FetchError> {
     // `?` on a reqwest::Error converts it through the `From` impl above.
     let mut resp = client
-        .get(url.clone())
+        .request(reqwest::Method::GET, url)?
         .header(USER_AGENT, BROWSER_USER_AGENT)
         .timeout(FETCH_TIMEOUT) // covers connect, headers and the whole body
         .send()

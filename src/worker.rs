@@ -1,5 +1,6 @@
 //! Background worker: fetch, assign to a story, compare, store.
 
+use crate::net::WebClient;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -53,7 +54,7 @@ impl Default for Delays {
 /// Processes articles until `shutdown` is cancelled.
 pub async fn run<L: Llm, N: Notifier>(
     db: Db,
-    http: reqwest::Client,
+    http: WebClient,
     llm: L,
     notifier: N,
     delays: Delays,
@@ -104,7 +105,7 @@ pub async fn run<L: Llm, N: Notifier>(
 }
 
 /// Claims the next pending article and runs it through the pipeline.
-pub async fn process_one<L: Llm>(db: &Db, http: &reqwest::Client, llm: &L) -> Result<Processed> {
+pub async fn process_one<L: Llm>(db: &Db, http: &WebClient, llm: &L) -> Result<Processed> {
     let Some(mut article) = db.claim_next_pending().await? else {
         return Ok(Processed::Idle);
     };
@@ -123,7 +124,7 @@ pub async fn process_one<L: Llm>(db: &Db, http: &reqwest::Client, llm: &L) -> Re
 
 async fn process_claimed<L: Llm>(
     db: &Db,
-    http: &reqwest::Client,
+    http: &WebClient,
     llm: &L,
     article: &mut ArticleRow,
 ) -> Result<Processed> {
@@ -169,7 +170,7 @@ fn is_temporary(err: &LlmError) -> bool {
 }
 
 /// Downloads the page and stores the text, or the reason it failed.
-async fn fetch(db: &Db, http: &reqwest::Client, article: &mut ArticleRow) -> Result<()> {
+async fn fetch(db: &Db, http: &WebClient, article: &mut ArticleRow) -> Result<()> {
     let fetched = match Url::parse(&article.url) {
         Ok(url) => fetch_article(http, &url).await.map_err(|e| e.to_string()),
         Err(e) => Err(format!("invalid URL: {e}")),

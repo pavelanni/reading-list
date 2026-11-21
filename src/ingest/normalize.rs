@@ -1,5 +1,6 @@
 //! URL normalization (pure) and shortener resolution (network).
 
+use crate::net::WebClient;
 use std::time::Duration;
 
 use url::Url;
@@ -46,17 +47,13 @@ pub fn normalize_url(url: &Url) -> Url {
 
 /// Follows a known shortener to its destination. Any other URL, and any
 /// failure, returns `url` unchanged.
-pub async fn resolve_shortener(client: &reqwest::Client, url: &Url) -> Url {
+pub async fn resolve_shortener(client: &WebClient, url: &Url) -> Url {
     resolve_shortener_with_hosts(client, url, SHORTENER_HOSTS).await
 }
 
 /// [`resolve_shortener`] with a custom host list, so tests can use a local
 /// mock server.
-pub async fn resolve_shortener_with_hosts(
-    client: &reqwest::Client,
-    url: &Url,
-    hosts: &[&str],
-) -> Url {
+pub async fn resolve_shortener_with_hosts(client: &WebClient, url: &Url, hosts: &[&str]) -> Url {
     if !url.host_str().is_some_and(|h| hosts.contains(&h)) {
         return url.clone();
     }
@@ -64,11 +61,11 @@ pub async fn resolve_shortener_with_hosts(
     // The client's redirect policy follows the chain; `resp.url()` is where
     // it ended. Unchanged URL means no redirect happened: try the next method.
     for method in [reqwest::Method::HEAD, reqwest::Method::GET] {
-        let sent = client
-            .request(method, url.clone())
-            .timeout(RESOLVE_TIMEOUT)
-            .send()
-            .await;
+        let Ok(request) = client.request(method, url) else {
+            tracing::debug!(%url, "shortener URL points at a blocked address");
+            return url.clone();
+        };
+        let sent = request.timeout(RESOLVE_TIMEOUT).send().await;
         match sent {
             Ok(resp) if resp.url() != url => return resp.url().clone(),
             Ok(_) => {}
@@ -79,7 +76,7 @@ pub async fn resolve_shortener_with_hosts(
 }
 
 /// Resolves a shortener, then normalizes the result.
-pub async fn canonicalize(client: &reqwest::Client, url: &Url) -> Url {
+pub async fn canonicalize(client: &WebClient, url: &Url) -> Url {
     normalize_url(&resolve_shortener(client, url).await)
 }
 

@@ -9,6 +9,7 @@ use reading_list::bot::Notifier;
 use reading_list::db::{Db, NewArticle};
 use reading_list::llm::prompts::Assignment;
 use reading_list::llm::{Llm, LlmError, Usage};
+use reading_list::net::{Addresses, WebClient};
 use reading_list::worker::{Delays, Processed, QUOTA_MESSAGE, process_one, run};
 use serde_json::{Value, json};
 use sqlx::Row;
@@ -106,7 +107,7 @@ fn compared(adds: &[&str], summary: &str) -> Result<Value, LlmError> {
 
 struct Env {
     db: Db,
-    http: reqwest::Client,
+    http: WebClient,
     server: MockServer,
 }
 
@@ -125,7 +126,7 @@ impl Env {
             .await;
         Env {
             db: Db::in_memory().await.unwrap(),
-            http: reqwest::Client::new(),
+            http: WebClient::new(Addresses::AllowLoopback).unwrap(),
             server,
         }
     }

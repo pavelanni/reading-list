@@ -1,6 +1,7 @@
 //! `fetch_article` against a local mock server.
 
 use reading_list::fetch::{FetchError, MAX_BODY_BYTES, fetch_article};
+use reading_list::net::{Addresses, WebClient};
 use url::Url;
 use wiremock::matchers::path;
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -25,7 +26,9 @@ async fn extracts_title_and_text() {
     let server = MockServer::start().await;
     let url = serve(&server, 200, "text/html; charset=utf-8", FIXTURE.into()).await;
 
-    let fetched = fetch_article(&reqwest::Client::new(), &url).await.unwrap();
+    let fetched = fetch_article(&WebClient::new(Addresses::AllowLoopback).unwrap(), &url)
+        .await
+        .unwrap();
     let title = fetched.title.expect("title");
     assert!(
         title.contains("ESP32-C5 brings dual-band Wi-Fi 6"),
@@ -40,7 +43,7 @@ async fn pdf_is_not_html() {
     let server = MockServer::start().await;
     let url = serve(&server, 200, "application/pdf", b"%PDF-1.7".to_vec()).await;
 
-    let err = fetch_article(&reqwest::Client::new(), &url)
+    let err = fetch_article(&WebClient::new(Addresses::AllowLoopback).unwrap(), &url)
         .await
         .unwrap_err();
     assert_eq!(err, FetchError::NotHtml("application/pdf".into()));
@@ -53,7 +56,7 @@ async fn oversized_body_rejected() {
     assert!(body.len() > MAX_BODY_BYTES);
     let url = serve(&server, 200, "text/html", body).await;
 
-    let err = fetch_article(&reqwest::Client::new(), &url)
+    let err = fetch_article(&WebClient::new(Addresses::AllowLoopback).unwrap(), &url)
         .await
         .unwrap_err();
     assert_eq!(err, FetchError::TooLarge);
@@ -64,7 +67,7 @@ async fn http_404_reported() {
     let server = MockServer::start().await;
     let url = serve(&server, 404, "text/html", b"not found".to_vec()).await;
 
-    let err = fetch_article(&reqwest::Client::new(), &url)
+    let err = fetch_article(&WebClient::new(Addresses::AllowLoopback).unwrap(), &url)
         .await
         .unwrap_err();
     assert_eq!(err, FetchError::Http(404));
@@ -77,7 +80,7 @@ async fn page_without_article_is_empty() {
     let html = "<html><head><title>Login</title></head><body><p>Please sign in.</p></body></html>";
     let url = serve(&server, 200, "text/html", html.into()).await;
 
-    let err = fetch_article(&reqwest::Client::new(), &url)
+    let err = fetch_article(&WebClient::new(Addresses::AllowLoopback).unwrap(), &url)
         .await
         .unwrap_err();
     assert_eq!(err, FetchError::Empty);
@@ -94,7 +97,7 @@ async fn unreachable_server_is_network_error() {
         .port();
     let url = Url::parse(&format!("http://127.0.0.1:{port}/page")).unwrap();
 
-    let err = fetch_article(&reqwest::Client::new(), &url)
+    let err = fetch_article(&WebClient::new(Addresses::AllowLoopback).unwrap(), &url)
         .await
         .unwrap_err();
     let FetchError::Network(msg) = err else {
@@ -102,4 +105,35 @@ async fn unreachable_server_is_network_error() {
     };
     // The cause from the source chain, not just "error sending request".
     assert!(msg.contains(": "), "no cause chain in: {msg}");
+}
+
+fn guarded() -> WebClient {
+    WebClient::new(Addresses::AllowLoopback).unwrap()
+}
+
+#[tokio::test]
+async fn private_ip_literal_is_blocked_before_connecting() {
+    let url = Url::parse("http://192.168.1.1/admin").unwrap();
+
+    let err = fetch_article(&guarded(), &url).await.unwrap_err();
+    assert!(matches!(err, FetchError::Blocked(_)), "{err:?}");
+}
+
+#[tokio::test]
+async fn redirect_to_private_address_is_blocked() {
+    let server = MockServer::start().await;
+    Mock::given(path("/jump"))
+        .respond_with(
+            ResponseTemplate::new(302).insert_header("Location", "http://169.254.169.254/latest"),
+        )
+        .mount(&server)
+        .await;
+    let url = Url::parse(&format!("{}/jump", server.uri())).unwrap();
+
+    let err = fetch_article(&guarded(), &url).await.unwrap_err();
+    // The redirect policy's error comes back through reqwest's source chain.
+    assert!(
+        err.to_string().contains("blocked address 169.254.169.254"),
+        "{err}"
+    );
 }
