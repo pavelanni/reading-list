@@ -10,7 +10,7 @@ use reading_list::db::{Db, NewArticle};
 use reading_list::llm::prompts::Assignment;
 use reading_list::llm::{Llm, LlmError, Usage};
 use reading_list::net::{Addresses, WebClient};
-use reading_list::worker::{Delays, Processed, QUOTA_MESSAGE, process_one, run};
+use reading_list::worker::{Delays, Pause, Processed, QUOTA_MESSAGE, process_one, run};
 use serde_json::{Value, json};
 use sqlx::Row;
 use tokio_util::sync::CancellationToken;
@@ -409,4 +409,100 @@ async fn note_added_while_processing_requeues() {
 
     let status = "SELECT process_status FROM article WHERE id = ?";
     assert_eq!(env.get(status, id).await, "pending");
+}
+
+/// Runs the worker with short delays until `n` notifications were sent.
+/// Each pause releases the article before notifying, so stopping right
+/// after a notification never interrupts `process_one`.
+async fn run_until_notified(env: &Env, llm: &FakeLlm, n: usize) -> Vec<String> {
+    let notifier = FakeNotifier::default();
+    let delays = Delays {
+        idle: Duration::from_millis(5),
+        retry: Duration::from_millis(5),
+        quota: Duration::from_millis(5),
+    };
+    let shutdown = CancellationToken::new();
+    let worker = run(
+        env.db.clone(),
+        env.http.clone(),
+        llm,
+        &notifier,
+        delays,
+        shutdown.clone(),
+    );
+    let stop = async {
+        while notifier.sent.lock().unwrap().len() < n {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+        shutdown.cancel();
+    };
+    tokio::time::timeout(Duration::from_secs(5), async { tokio::join!(worker, stop) })
+        .await
+        .expect("worker did not stop");
+    notifier.sent.into_inner().unwrap()
+}
+
+#[tokio::test]
+async fn rejected_key_or_model_pauses_without_using_attempts() {
+    for code in [401, 403, 404] {
+        let env = Env::new().await;
+        let id = env.save("page").await;
+        let llm = FakeLlm::always(LlmError::Http(code, "rejected".into()));
+
+        assert_eq!(
+            env.process(&llm).await,
+            Processed::Paused(Pause::Rejected(code))
+        );
+        let article =
+            "SELECT process_status || ' ' || CAST(attempts AS TEXT) FROM article WHERE id = ?";
+        assert_eq!(env.get(article, id).await, "pending 0", "HTTP {code}");
+    }
+}
+
+#[tokio::test]
+async fn bad_request_uses_an_attempt() {
+    // 400 is usually about this article (too long, refused), not the setup.
+    let env = Env::new().await;
+    let id = env.save("page").await;
+    let llm = FakeLlm::always(LlmError::Http(400, "context too long".into()));
+
+    assert_eq!(env.process(&llm).await, Processed::Retry(id));
+    let article =
+        "SELECT process_status || ' ' || CAST(attempts AS TEXT) FROM article WHERE id = ?";
+    assert_eq!(env.get(article, id).await, "pending 1");
+}
+
+#[tokio::test]
+async fn new_pause_reason_notifies_again() {
+    let env = Env::new().await;
+    env.save("page").await;
+    let llm = FakeLlm {
+        fallback: LlmError::Http(401, "bad key".into()),
+        ..FakeLlm::new(vec![Err(LlmError::QuotaExhausted)])
+    };
+
+    let sent = run_until_notified(&env, &llm, 2).await;
+    assert_eq!(
+        sent,
+        vec![QUOTA_MESSAGE.to_owned(), Pause::Rejected(401).message()]
+    );
+}
+
+#[tokio::test]
+async fn quota_notifies_again_after_recovery() {
+    let env = Env::new().await;
+    env.save("page").await;
+    env.save("other").await;
+    // First article: quota, then processed on retry. Second article: quota.
+    let llm = FakeLlm {
+        fallback: LlmError::QuotaExhausted,
+        ..FakeLlm::new(vec![
+            Err(LlmError::QuotaExhausted),
+            new_story("ESP32-C5"),
+            compared(&["dual band"], "S1"),
+        ])
+    };
+
+    let sent = run_until_notified(&env, &llm, 2).await;
+    assert_eq!(sent, vec![QUOTA_MESSAGE, QUOTA_MESSAGE]);
 }

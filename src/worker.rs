@@ -29,8 +29,31 @@ pub enum Processed {
     Retry(i64),
     /// Article gave up after too many bad answers.
     Failed(i64),
-    /// OpenRouter is out of credits; article back in the queue.
-    QuotaPaused,
+    /// Summaries paused for every article; this one is back in the queue.
+    Paused(Pause),
+}
+
+/// Why summaries are paused. These errors are about the setup, not the
+/// article, so they never use up an article's attempts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pause {
+    /// HTTP 402: out of credits.
+    Quota,
+    /// HTTP 401/403/404: API key revoked or wrong, or model name unknown.
+    Rejected(u16),
+}
+
+impl Pause {
+    /// Message for Pavel, sent once per pause.
+    pub fn message(self) -> String {
+        match self {
+            Pause::Quota => QUOTA_MESSAGE.to_owned(),
+            Pause::Rejected(code) => format!(
+                "Summaries paused: OpenRouter rejected the request (HTTP {code}). \
+                 Check the API key and model name."
+            ),
+        }
+    }
 }
 
 /// How long the worker waits in each situation. Tests use short delays.
@@ -60,7 +83,9 @@ pub async fn run<L: Llm, N: Notifier>(
     delays: Delays,
     shutdown: CancellationToken,
 ) {
-    let mut quota_notified = false;
+    // The pause already reported, so each pause is announced once. Any
+    // other outcome ends the pause; a new or different one is announced.
+    let mut reported: Option<Pause> = None;
     loop {
         // A cancelled `process_one` drops its open transaction, which rolls
         // back; the article stays `processing` until the next startup.
@@ -68,10 +93,12 @@ pub async fn run<L: Llm, N: Notifier>(
             _ = shutdown.cancelled() => return,
             outcome = process_one(&db, &http, &llm) => outcome,
         };
+        if !matches!(outcome, Ok(Processed::Paused(_))) {
+            reported = None;
+        }
         let wait = match outcome {
             Ok(Processed::Done(id)) => {
                 tracing::info!(article_id = id, "article processed");
-                quota_notified = false;
                 None
             }
             Ok(Processed::Failed(id)) => {
@@ -83,10 +110,10 @@ pub async fn run<L: Llm, N: Notifier>(
                 tracing::info!(article_id = id, "article will be retried");
                 Some(delays.retry)
             }
-            Ok(Processed::QuotaPaused) => {
-                if !quota_notified {
-                    notifier.notify(QUOTA_MESSAGE).await;
-                    quota_notified = true;
+            Ok(Processed::Paused(pause)) => {
+                if reported != Some(pause) {
+                    notifier.notify(&pause.message()).await;
+                    reported = Some(pause);
                 }
                 Some(delays.quota)
             }
@@ -140,7 +167,15 @@ async fn process_claimed<L: Llm>(
         }
         Err(LlmError::QuotaExhausted) => {
             db.release(id).await?;
-            Ok(Processed::QuotaPaused)
+            Ok(Processed::Paused(Pause::Quota))
+        }
+        Err(LlmError::Http(code @ (401 | 403 | 404), _)) => {
+            tracing::warn!(
+                article_id = id,
+                "OpenRouter rejected the request: HTTP {code}"
+            );
+            db.release(id).await?;
+            Ok(Processed::Paused(Pause::Rejected(code)))
         }
         Err(err) if is_temporary(&err) => {
             tracing::warn!(article_id = id, "temporary model error: {err}");
