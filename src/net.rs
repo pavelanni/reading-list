@@ -198,7 +198,6 @@ mod tests {
             "::ffff:192.168.1.1", // IPv4-mapped private
         ];
         for a in blocked {
-            println!("{a}");
             assert!(!is_public(ip(a)), "{a}");
         }
     }
