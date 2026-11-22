@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "UPDATE article SET process_status = 'processing'\n               WHERE id = (SELECT id FROM article WHERE process_status = 'pending'\n                           ORDER BY id LIMIT 1)\n               RETURNING id AS \"id!\", url AS \"url!\", title, extracted_text, note,\n                         share_text, fetch_status AS \"fetch_status!: FetchStatus\",\n                         attempts AS \"attempts!\"",
+  "query": "UPDATE article SET process_status = 'processing'\n               WHERE id = (SELECT id FROM article\n                           WHERE process_status = 'pending'\n                             AND (retry_at IS NULL OR retry_at <= datetime('now'))\n                           ORDER BY id LIMIT 1)\n               RETURNING id AS \"id!\", url AS \"url!\", title, extracted_text, note,\n                         share_text, fetch_status AS \"fetch_status!: FetchStatus\",\n                         attempts AS \"attempts!\",\n                         transient_failures AS \"transient_failures!\"",
   "describe": {
     "columns": [
       {
@@ -90,6 +90,17 @@
             "name": "attempts"
           }
         }
+      },
+      {
+        "name": "transient_failures!",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "transient_failures"
+          }
+        }
       }
     ],
     "parameters": {
@@ -103,8 +114,9 @@
       true,
       true,
       false,
+      false,
       false
     ]
   },
-  "hash": "436d6e3c1c861fc93b37c05a696bfa785e089413057394c49f23d43bdf3b74c8"
+  "hash": "79f9efa96db3d2c939b73cda3f0f12501c24bf33735bab08fbc7afeedb76859b"
 }

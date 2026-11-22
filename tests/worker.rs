@@ -10,6 +10,7 @@ use reading_list::db::{Db, NewArticle};
 use reading_list::llm::prompts::Assignment;
 use reading_list::llm::{Llm, LlmError, Usage};
 use reading_list::net::{Addresses, WebClient};
+use reading_list::status::MAX_TRANSIENT_FAILURES;
 use reading_list::worker::{Delays, Pause, Processed, QUOTA_MESSAGE, process_one, run};
 use serde_json::{Value, json};
 use sqlx::Row;
@@ -116,6 +117,10 @@ impl Env {
         let server = MockServer::start().await;
         Mock::given(path("/missing"))
             .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+        Mock::given(path("/unavailable"))
+            .respond_with(ResponseTemplate::new(503))
             .mount(&server)
             .await;
         Mock::given(wiremock::matchers::any())
@@ -273,7 +278,7 @@ async fn fetch_failure_still_assigned_to_story() {
 
     assert_eq!(env.process(&llm).await, Processed::Done(id));
 
-    let article = "SELECT fetch_status || ' ' || process_status || ' ' || error \
+    let article = "SELECT fetch_status || ' ' || process_status || ' ' || fetch_error \
                    FROM article WHERE id = ?";
     assert_eq!(env.get(article, id).await, "failed done HTTP 404");
     assert!(llm.user_prompt(0).contains("could not be fetched"));
@@ -505,4 +510,117 @@ async fn quota_notifies_again_after_recovery() {
 
     let sent = run_until_notified(&env, &llm, 2).await;
     assert_eq!(sent, vec![QUOTA_MESSAGE, QUOTA_MESSAGE]);
+}
+
+impl Env {
+    /// Runs test-only SQL built from literals in this file.
+    async fn exec(&self, sql: &str, id: i64) {
+        sqlx::query(sqlx::AssertSqlSafe(sql.to_owned()))
+            .bind(id)
+            .execute(self.db.pool())
+            .await
+            .unwrap();
+    }
+
+    async fn near_cap(&self, id: i64) {
+        let sql = format!(
+            "UPDATE article SET transient_failures = {} WHERE id = ?",
+            MAX_TRANSIENT_FAILURES - 1
+        );
+        self.exec(&sql, id).await;
+    }
+}
+
+#[tokio::test]
+async fn transient_model_error_defers_article_and_queue_moves_on() {
+    let env = Env::new().await;
+    let first = env.save("page").await;
+    let second = env.save("other").await;
+    let llm = FakeLlm::new(vec![
+        Err(LlmError::Network("connection reset".into())),
+        new_story("Second"),
+        compared(&["news"], "S"),
+    ]);
+
+    assert_eq!(env.process(&llm).await, Processed::Retry(first));
+    // The first article waits; the one behind it is not blocked.
+    assert_eq!(env.process(&llm).await, Processed::Done(second));
+    assert_eq!(env.process(&llm).await, Processed::Idle);
+
+    let q = "SELECT process_status || ' ' || attempts || ' ' || transient_failures || ' '
+                    || (retry_at > datetime('now'))
+             FROM article WHERE id = ?";
+    assert_eq!(env.get(q, first).await, "pending 0 1 1");
+}
+
+#[tokio::test]
+async fn deferred_article_is_claimed_when_its_time_comes() {
+    let env = Env::new().await;
+    let id = env.save("page").await;
+    let llm = FakeLlm::new(vec![
+        Err(LlmError::RateLimited),
+        new_story("Later"),
+        compared(&["news"], "S"),
+    ]);
+
+    assert_eq!(env.process(&llm).await, Processed::Retry(id));
+    env.exec(
+        "UPDATE article SET retry_at = datetime('now', '-1 seconds') WHERE id = ?",
+        id,
+    )
+    .await;
+    assert_eq!(env.process(&llm).await, Processed::Done(id));
+}
+
+#[tokio::test]
+async fn transient_failures_give_up_at_the_cap() {
+    let env = Env::new().await;
+    let id = env.save("page").await;
+    env.near_cap(id).await;
+    let llm = FakeLlm::always(LlmError::Http(503, "overloaded".into()));
+
+    assert_eq!(env.process(&llm).await, Processed::Failed(id));
+    let q = "SELECT process_status FROM article WHERE id = ?";
+    assert_eq!(env.get(q, id).await, "failed");
+}
+
+#[tokio::test]
+async fn transient_fetch_error_retries_the_page_without_calling_the_model() {
+    let env = Env::new().await;
+    let id = env.save("unavailable").await;
+    let llm = FakeLlm::new(Vec::new());
+
+    assert_eq!(env.process(&llm).await, Processed::Retry(id));
+    assert_eq!(llm.calls(), 0);
+    let q = "SELECT fetch_status || ' ' || transient_failures || ' ' || error
+             FROM article WHERE id = ?";
+    assert_eq!(env.get(q, id).await, "pending 1 HTTP 503");
+}
+
+#[tokio::test]
+async fn fetch_failing_at_the_cap_is_summarized_without_text() {
+    let env = Env::new().await;
+    let id = env.save("unavailable").await;
+    env.near_cap(id).await;
+    let llm = FakeLlm::new(vec![new_story("No text"), compared(&[], "S")]);
+
+    assert_eq!(env.process(&llm).await, Processed::Done(id));
+    let q = "SELECT fetch_status || ' ' || fetch_error FROM article WHERE id = ?";
+    assert_eq!(env.get(q, id).await, "failed HTTP 503");
+}
+
+#[tokio::test]
+async fn fetch_error_survives_a_model_failure() {
+    let env = Env::new().await;
+    let id = env.save("missing").await;
+    let llm = FakeLlm::new(vec![Ok(json!({"unexpected": true}))]);
+
+    assert_eq!(env.process(&llm).await, Processed::Retry(id));
+    assert_eq!(
+        env.get("SELECT fetch_error FROM article WHERE id = ?", id)
+            .await,
+        "HTTP 404"
+    );
+    let error = env.get("SELECT error FROM article WHERE id = ?", id).await;
+    assert!(error.starts_with("bad model response"), "{error}");
 }

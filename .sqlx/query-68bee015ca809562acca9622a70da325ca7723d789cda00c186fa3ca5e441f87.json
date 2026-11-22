@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET fetch_status = 'failed', fetch_error = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "68bee015ca809562acca9622a70da325ca7723d789cda00c186fa3ca5e441f87"
+}

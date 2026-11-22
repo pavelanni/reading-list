@@ -21,6 +21,8 @@ pub struct ArticleRow {
     pub share_text: Option<String>,
     pub fetch_status: FetchStatus,
     pub attempts: i64,
+    /// Transient failures so far (timeouts, 5xx, rate limits).
+    pub transient_failures: i64,
     pub tags: Vec<String>,
 }
 
@@ -40,11 +42,14 @@ impl Db {
     pub async fn claim_next_pending(&self) -> Result<Option<ArticleRow>> {
         let row = sqlx::query!(
             r#"UPDATE article SET process_status = 'processing'
-               WHERE id = (SELECT id FROM article WHERE process_status = 'pending'
+               WHERE id = (SELECT id FROM article
+                           WHERE process_status = 'pending'
+                             AND (retry_at IS NULL OR retry_at <= datetime('now'))
                            ORDER BY id LIMIT 1)
                RETURNING id AS "id!", url AS "url!", title, extracted_text, note,
                          share_text, fetch_status AS "fetch_status!: FetchStatus",
-                         attempts AS "attempts!""#
+                         attempts AS "attempts!",
+                         transient_failures AS "transient_failures!""#
         )
         .fetch_optional(&self.pool)
         .await?;
@@ -61,6 +66,7 @@ impl Db {
             share_text: row.share_text,
             fetch_status: row.fetch_status,
             attempts: row.attempts,
+            transient_failures: row.transient_failures,
             tags,
         }))
     }
@@ -112,7 +118,7 @@ impl Db {
     /// without the text.
     pub async fn store_fetch_failure(&self, article_id: i64, reason: &str) -> Result<()> {
         sqlx::query!(
-            "UPDATE article SET fetch_status = 'failed', error = ? WHERE id = ?",
+            "UPDATE article SET fetch_status = 'failed', fetch_error = ? WHERE id = ?",
             reason,
             article_id
         )
@@ -148,6 +154,33 @@ impl Db {
             attempts,
             error,
             next,
+            article_id
+        )
+        .execute(&self.pool)
+        .await?;
+        Ok(next)
+    }
+
+    /// Counts a transient failure. `failures` includes this one. Below
+    /// the cap the article waits [`status::transient_backoff`] before it can
+    /// be claimed again; at the cap it is marked failed.
+    pub async fn record_transient(
+        &self,
+        article_id: i64,
+        failures: i64,
+        error: &str,
+    ) -> Result<ProcessStatus> {
+        let next = status::after_transient_failure(failures);
+        // An SQLite date modifier such as "+120 seconds".
+        let wait = format!("+{} seconds", status::transient_backoff(failures).as_secs());
+        sqlx::query!(
+            "UPDATE article SET transient_failures = ?, error = ?, process_status = ?,
+                                retry_at = datetime('now', ?)
+             WHERE id = ?",
+            failures,
+            error,
+            next,
+            wait,
             article_id
         )
         .execute(&self.pool)

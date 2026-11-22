@@ -1,6 +1,5 @@
 //! Background worker: fetch, assign to a story, compare, store.
 
-use crate::net::WebClient;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -15,8 +14,10 @@ use crate::llm::prompts::{
     compare_prompt,
 };
 use crate::llm::{Llm, LlmError};
+use crate::net::WebClient;
+use crate::status::{self, Disposition};
 
-pub const QUOTA_MESSAGE: &str = "Summaries paused: OpenRouter quota reached.";
+pub use crate::status::{Pause, QUOTA_MESSAGE};
 
 /// What one call to [`process_one`] did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,29 +32,6 @@ pub enum Processed {
     Failed(i64),
     /// Summaries paused for every article; this one is back in the queue.
     Paused(Pause),
-}
-
-/// Why summaries are paused. These errors are about the setup, not the
-/// article, so they never use up an article's attempts.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Pause {
-    /// HTTP 402: out of credits.
-    Quota,
-    /// HTTP 401/403/404: API key revoked or wrong, or model name unknown.
-    Rejected(u16),
-}
-
-impl Pause {
-    /// Message for Pavel, sent once per pause.
-    pub fn message(self) -> String {
-        match self {
-            Pause::Quota => QUOTA_MESSAGE.to_owned(),
-            Pause::Rejected(code) => format!(
-                "Summaries paused: OpenRouter rejected the request (HTTP {code}). \
-                 Check the API key and model name."
-            ),
-        }
-    }
 }
 
 /// How long the worker waits in each situation. Tests use short delays.
@@ -137,12 +115,18 @@ pub async fn process_one<L: Llm>(db: &Db, http: &WebClient, llm: &L) -> Result<P
         return Ok(Processed::Idle);
     };
     let id = article.id;
+    let failures = article.transient_failures + 1;
     match process_claimed(db, http, llm, &mut article).await {
         Ok(done) => Ok(done),
         Err(err) => {
-            // Don't leave the article `processing` after a database error.
-            if let Err(release_err) = db.release(id).await {
-                tracing::error!(article_id = id, "release failed: {release_err:#}");
+            // A database error. Count it as transient, so one that repeats
+            // for this article gives up at the cap instead of looping (and
+            // re-billing model calls) forever.
+            if let Err(record_err) = db
+                .record_transient(id, failures, &format!("database error: {err:#}"))
+                .await
+            {
+                tracing::error!(article_id = id, "recording failure failed: {record_err:#}");
             }
             Err(err)
         }
@@ -156,61 +140,72 @@ async fn process_claimed<L: Llm>(
     article: &mut ArticleRow,
 ) -> Result<Processed> {
     let id = article.id;
-    if article.fetch_status == FetchStatus::Pending {
-        fetch(db, http, article).await?;
+    if article.fetch_status == FetchStatus::Pending
+        && fetch(db, http, article).await? == Fetch::Deferred
+    {
+        // No text yet: try the page again later instead of summarizing
+        // from the URL alone.
+        return Ok(Processed::Retry(id));
     }
 
-    match assign_and_compare(db, llm, article).await? {
+    let err = match assign_and_compare(db, llm, article).await? {
         Ok((target, result)) => {
             db.apply_comparison(article, &target, &result).await?;
-            Ok(Processed::Done(id))
+            return Ok(Processed::Done(id));
         }
-        Err(LlmError::QuotaExhausted) => {
+        Err(err) => err,
+    };
+    match status::classify_llm_error(&err) {
+        Disposition::Pause(pause) => {
+            tracing::warn!(article_id = id, "summaries paused: {err}");
             db.release(id).await?;
-            Ok(Processed::Paused(Pause::Quota))
+            Ok(Processed::Paused(pause))
         }
-        Err(LlmError::Http(code @ (401 | 403 | 404), _)) => {
-            tracing::warn!(
-                article_id = id,
-                "OpenRouter rejected the request: HTTP {code}"
-            );
-            db.release(id).await?;
-            Ok(Processed::Paused(Pause::Rejected(code)))
-        }
-        Err(err) if is_temporary(&err) => {
+        Disposition::Transient => {
             tracing::warn!(article_id = id, "temporary model error: {err}");
-            db.release(id).await?;
-            Ok(Processed::Retry(id))
+            let status = db
+                .record_transient(id, article.transient_failures + 1, &err.to_string())
+                .await?;
+            Ok(outcome(id, status))
         }
-        Err(err) => {
+        Disposition::Attempt => {
             let status = db
                 .record_failure(id, article.attempts + 1, &err.to_string())
                 .await?;
-            Ok(match status {
-                ProcessStatus::Failed => Processed::Failed(id),
-                _ => Processed::Retry(id),
-            })
+            Ok(outcome(id, status))
         }
     }
 }
 
-/// Errors that say nothing about this article, so they don't use up one
-/// of its attempts.
-fn is_temporary(err: &LlmError) -> bool {
-    match err {
-        LlmError::RateLimited | LlmError::Network(_) => true,
-        LlmError::Http(code, _) => *code >= 500,
-        LlmError::QuotaExhausted | LlmError::BadResponse(_) => false,
+/// `Retry` while the article is still queued, `Failed` once it gave up.
+fn outcome(id: i64, status: ProcessStatus) -> Processed {
+    match status {
+        ProcessStatus::Failed => Processed::Failed(id),
+        _ => Processed::Retry(id),
     }
 }
 
+/// Whether the pipeline can go on after [`fetch`].
+#[derive(Debug, PartialEq, Eq)]
+enum Fetch {
+    /// Text stored, or a permanent failure stored: summarize now.
+    Ready,
+    /// A transient failure: the article waits and is fetched again.
+    Deferred,
+}
+
 /// Downloads the page and stores the text, or the reason it failed.
-async fn fetch(db: &Db, http: &WebClient, article: &mut ArticleRow) -> Result<()> {
-    let fetched = match Url::parse(&article.url) {
-        Ok(url) => fetch_article(http, &url).await.map_err(|e| e.to_string()),
-        Err(e) => Err(format!("invalid URL: {e}")),
+async fn fetch(db: &Db, http: &WebClient, article: &mut ArticleRow) -> Result<Fetch> {
+    let url = match Url::parse(&article.url) {
+        Ok(url) => url,
+        Err(e) => {
+            db.store_fetch_failure(article.id, &format!("invalid URL: {e}"))
+                .await?;
+            article.fetch_status = FetchStatus::Failed;
+            return Ok(Fetch::Ready);
+        }
     };
-    match fetched {
+    match fetch_article(http, &url).await {
         Ok(page) => {
             db.store_fetched(article.id, page.title.as_deref(), &page.text)
                 .await?;
@@ -219,14 +214,25 @@ async fn fetch(db: &Db, http: &WebClient, article: &mut ArticleRow) -> Result<()
             }
             article.extracted_text = Some(page.text);
             article.fetch_status = FetchStatus::Ok;
+            Ok(Fetch::Ready)
         }
-        Err(reason) => {
-            tracing::info!(article_id = article.id, "fetch failed: {reason}");
-            db.store_fetch_failure(article.id, &reason).await?;
+        Err(err)
+            if status::is_transient_fetch_error(&err)
+                && status::after_transient_failure(article.transient_failures + 1)
+                    == ProcessStatus::Pending =>
+        {
+            tracing::info!(article_id = article.id, "fetch failed, will retry: {err}");
+            db.record_transient(article.id, article.transient_failures + 1, &err.to_string())
+                .await?;
+            Ok(Fetch::Deferred)
+        }
+        Err(err) => {
+            tracing::info!(article_id = article.id, "fetch failed: {err}");
+            db.store_fetch_failure(article.id, &err.to_string()).await?;
             article.fetch_status = FetchStatus::Failed;
+            Ok(Fetch::Ready)
         }
     }
-    Ok(())
 }
 
 /// The two model calls. The outer `Result` is for database errors, the
