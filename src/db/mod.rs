@@ -2,11 +2,14 @@
 
 mod articles;
 mod calls;
+mod reads;
 mod stories;
 
 pub use articles::{NewArticle, SaveOutcome};
+pub use reads::{StoryArticleRow, StoryHeadRow};
 pub use stories::{ArticleRow, StoryRow};
 
+use std::fmt;
 use std::path::Path;
 use std::str::FromStr;
 use std::time::Duration;
@@ -25,6 +28,12 @@ pub enum StoryKind {
     Idea,
 }
 
+impl fmt::Display for StoryKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad(self.as_str())
+    }
+}
+
 /// Reading status of a story.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, Serialize, Deserialize)]
 #[sqlx(rename_all = "lowercase")]
@@ -35,9 +44,16 @@ pub enum StoryStatus {
     Dropped,
 }
 
+impl fmt::Display for StoryStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad(self.as_str())
+    }
+}
+
 /// Where an article is in the processing pipeline.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, Serialize)]
 #[sqlx(rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum ProcessStatus {
     Pending,
     Processing,
@@ -46,8 +62,9 @@ pub enum ProcessStatus {
 }
 
 /// Whether the article page has been downloaded.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type, Serialize)]
 #[sqlx(rename_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
 pub enum FetchStatus {
     Pending,
     Ok,

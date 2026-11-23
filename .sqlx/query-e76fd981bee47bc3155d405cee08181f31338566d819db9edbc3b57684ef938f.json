@@ -1,0 +1,110 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", url, title, story_id,\n                      fetch_status AS \"fetch_status: FetchStatus\",\n                      process_status AS \"process_status: ProcessStatus\",\n                      attempts, error\n               FROM article\n               WHERE process_status = 'failed' OR fetch_status = 'failed'\n               ORDER BY saved_at DESC, id DESC",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "url",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "story_id",
+        "ordinal": 3,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "story_id"
+          }
+        }
+      },
+      {
+        "name": "fetch_status: FetchStatus",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "fetch_status"
+          }
+        }
+      },
+      {
+        "name": "process_status: ProcessStatus",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "process_status"
+          }
+        }
+      },
+      {
+        "name": "attempts",
+        "ordinal": 6,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "attempts"
+          }
+        }
+      },
+      {
+        "name": "error",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "error"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "e76fd981bee47bc3155d405cee08181f31338566d819db9edbc3b57684ef938f"
+}

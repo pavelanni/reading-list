@@ -1,0 +1,45 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT s.id AS \"id!\", s.title,\n                      snippet(story_fts, -1, '[', ']', '…', 12) AS \"snippet!: String\"\n               FROM story_fts JOIN story s ON s.id = story_fts.rowid\n               WHERE story_fts MATCH ?\n               ORDER BY rank LIMIT ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "snippet!: String",
+        "ordinal": 2,
+        "type_info": "Null",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "06b813634517fd4a58a8a01a4713c925667cd6200055c6466ed209ff80e6afde"
+}

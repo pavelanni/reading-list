@@ -1,0 +1,170 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id AS \"id!\", url, original_url, title, extracted_text, note,\n                      share_text, saved_at, fetch_status AS \"fetch_status: FetchStatus\",\n                      process_status AS \"process_status: ProcessStatus\",\n                      story_id, one_line_summary, error\n               FROM article WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "url",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "name": "original_url",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "original_url"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "extracted_text",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "extracted_text"
+          }
+        }
+      },
+      {
+        "name": "note",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "note"
+          }
+        }
+      },
+      {
+        "name": "share_text",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "share_text"
+          }
+        }
+      },
+      {
+        "name": "saved_at",
+        "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "saved_at"
+          }
+        }
+      },
+      {
+        "name": "fetch_status: FetchStatus",
+        "ordinal": 8,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "fetch_status"
+          }
+        }
+      },
+      {
+        "name": "process_status: ProcessStatus",
+        "ordinal": 9,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "process_status"
+          }
+        }
+      },
+      {
+        "name": "story_id",
+        "ordinal": 10,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "story_id"
+          }
+        }
+      },
+      {
+        "name": "one_line_summary",
+        "ordinal": 11,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "one_line_summary"
+          }
+        }
+      },
+      {
+        "name": "error",
+        "ordinal": 12,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "error"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "59debcd7997777ff59b0e6721da3ffc20581ff2780e4f71f32016865f7053d0b"
+}

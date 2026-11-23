@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT process_status AS \"s: ProcessStatus\" FROM article WHERE id = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "s: ProcessStatus",
+        "ordinal": 0,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "process_status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a3e01fdc6ab01eb03375f247a237260cb82196e23667f3de0d03bed31c40b519"
+}
