@@ -73,3 +73,20 @@ avoids two saves of the same URL racing. No `tokio::spawn` per message.
 `resp.bytes()` and `resp.text()` buffer whatever the server sends.
 `resp.chunk().await` returns the body piece by piece, so you can stop at a
 limit, whatever `Content-Length` says. Seen in: `fetch_article`.
+
+## `async move` takes the whole variable
+
+`async move { worker::run(db.clone(), …) }` moves `db` itself into the
+block, even though only a clone is used inside. A later `mcp::serve(db, …)`
+then fails with "use of moved value". Clone first, outside the block, and
+move the clone in: `let worker_db = db.clone();`. Seen in: `main`.
+
+## Shutdown with one `CancellationToken`
+
+`main` creates one token and gives each service a clone. On SIGTERM,
+SIGINT, or the first service to stop, it calls `cancel()`, then waits a
+bounded time (`tokio::time::timeout`) for the rest. Each service turns
+the token into its own stop signal: `select!` in the worker,
+`with_graceful_shutdown` in axum, a `ShutdownToken` in teloxide. A
+`JoinSet` holds the tasks; dropping it aborts any that did not stop in
+time. Seen in: `main`, `bot::run`.

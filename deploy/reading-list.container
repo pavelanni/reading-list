@@ -1,0 +1,28 @@
+# Rootless Quadlet unit. Install to ~/.config/containers/systemd/,
+# then `systemctl --user daemon-reload && systemctl --user start reading-list`.
+# Create the secrets first (see README.md).
+
+[Unit]
+Description=Reading list: Telegram inbox, summaries, MCP server
+Wants=network-online.target
+After=network-online.target
+
+[Container]
+Image=localhost/reading-list:latest
+ContainerName=reading-list
+Volume=reading-list-data:/data:Z
+PublishPort=8787:8787
+Secret=reading-list-telegram-token,type=env,target=TELEGRAM_BOT_TOKEN
+Secret=reading-list-telegram-user,type=env,target=TELEGRAM_ALLOWED_USER_ID
+Secret=reading-list-openrouter-key,type=env,target=OPENROUTER_API_KEY
+Secret=reading-list-mcp-token,type=env,target=MCP_BEARER_TOKEN
+# Not secret: change the model here.
+Environment=OPENROUTER_MODEL=anthropic/claude-haiku-5-5
+# Leaves 2 s after the app's 8 s drain before SIGKILL.
+StopTimeout=10
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

@@ -27,8 +27,9 @@ When upgrading local Rust, update `RUST_VERSION` in CI in the same commit.
 | Lint | `cargo clippy --all-targets -- -D warnings` |
 | Test | `cargo test` |
 | Markdown lint | `markdownlint-cli2 "**/*.md" "#target" "#.superpowers"` |
+| Container image | `podman build -t reading-list .` |
 
-Run all four before every commit.
+Run the first four before every commit.
 
 ## Crates
 
@@ -46,7 +47,18 @@ Run all four before every commit.
 | `rmcp` | 3.11 | `server`, `macros`, `transport-streamable-http-server`; re-exports `schemars` |
 | `axum` | 0.8 | HTTP host for MCP, bearer middleware |
 | `subtle` | 2.6 | constant-time token compare |
+| `tokio` | 1.54 | `macros`, `rt-multi-thread`, `signal`, `time` |
+| `tokio-util` | 0.7 | `CancellationToken` for shutdown |
+| `anyhow` | 1.0 | application errors |
+| `tracing`, `tracing-subscriber` | 0.1, 0.3 | `env-filter`; `RUST_LOG` |
 | `wiremock` | 0.6 | dev: HTTP mocks |
+
+## Deployment
+
+`Containerfile` builds on UBI 10 with rustup pinned to `RUST_VERSION`
+(keep it in step with CI); runtime is `ubi10/ubi-minimal`, user 1001.
+Quadlet unit: `deploy/reading-list.container`. `main` drains services
+for 8 s after SIGTERM; keep the unit's `StopTimeout` above that.
 
 ## Database and sqlx
 

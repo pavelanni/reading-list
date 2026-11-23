@@ -61,3 +61,18 @@ sense, `Some(1 || 2)` would be "`Some` of a bool". In expressions, `|`
 is bitwise OR (`flags | MASK`), so `||` in a pattern is a syntax error
 and `|` in an `if` silently does the bitwise thing on integers (`bool |
 bool` works too but does not short-circuit).
+
+## Guards do not count for exhaustiveness
+
+The compiler ignores `if` guards when checking that a `match` covers
+every case. `Ok(x) if flag` plus `Ok(x) if !flag` looks complete but is
+rejected, which tempts you to add `_ => …`. Instead, leave the last arm
+for that pattern unguarded: it only sees what the guarded arms above
+rejected. A wildcard switches the exhaustiveness check off, so a case
+added later lands there silently. Seen in: `exit_is_failure`.
+
+## Bind errors, do not discard them
+
+`Ok(Err(_))` throws away the one value that explains the failure. Bind
+it (`Ok(Err(err))`) and log it with `error = ?err`; for `anyhow::Error`,
+Debug prints the whole context chain. Seen in: `exit_is_failure`.

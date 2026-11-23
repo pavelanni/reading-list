@@ -1,0 +1,11 @@
+target
+.git
+.worktrees
+.superpowers
+.env
+*.db
+*.db-shm
+*.db-wal
+docs
+lessons
+.DS_Store
