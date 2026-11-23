@@ -1,8 +1,11 @@
 //! Database access. All SQL lives under this module.
 
 mod articles;
+mod calls;
+mod stories;
 
 pub use articles::{NewArticle, SaveOutcome};
+pub use stories::{ArticleRow, StoryRow};
 
 use std::path::Path;
 use std::str::FromStr;
@@ -30,6 +33,46 @@ pub enum StoryStatus {
     Unread,
     Read,
     Dropped,
+}
+
+/// Where an article is in the processing pipeline.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
+#[sqlx(rename_all = "lowercase")]
+pub enum ProcessStatus {
+    Pending,
+    Processing,
+    Done,
+    Failed,
+}
+
+/// Whether the article page has been downloaded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, sqlx::Type)]
+#[sqlx(rename_all = "lowercase")]
+pub enum FetchStatus {
+    Pending,
+    Ok,
+    Failed,
+}
+
+impl StoryKind {
+    /// The lowercase name used in the database, JSON and prompts.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            StoryKind::News => "news",
+            StoryKind::Idea => "idea",
+        }
+    }
+}
+
+impl StoryStatus {
+    /// The lowercase name used in the database, JSON and prompts.
+    pub fn as_str(self) -> &'static str {
+        match self {
+            StoryStatus::Unread => "unread",
+            StoryStatus::Read => "read",
+            StoryStatus::Dropped => "dropped",
+        }
+    }
 }
 
 /// Handle to the database. Cheap to clone: the pool is reference-counted.

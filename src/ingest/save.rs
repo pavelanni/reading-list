@@ -4,6 +4,7 @@
 //! [`handle_message`], and sends the [`Action`]. Everything testable lives
 //! here.
 
+use crate::net::WebClient;
 use anyhow::Result;
 
 use super::normalize::canonicalize;
@@ -35,7 +36,7 @@ pub enum Action {
 /// map a reply-to-the-reply back to these articles.
 pub async fn handle_message(
     db: &Db,
-    http: &reqwest::Client,
+    http: &WebClient,
     allowed_user_id: u64,
     msg: Incoming,
 ) -> Result<(Action, Vec<i64>)> {

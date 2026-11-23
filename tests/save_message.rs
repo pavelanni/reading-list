@@ -4,6 +4,7 @@
 
 use reading_list::db::Db;
 use reading_list::ingest::save::{Action, Incoming, handle_message};
+use reading_list::net::{Addresses, WebClient};
 
 const PAVEL: u64 = 1001;
 
@@ -16,9 +17,14 @@ fn msg(text: &str) -> Incoming {
 }
 
 async fn handle(db: &Db, m: Incoming) -> (Action, Vec<i64>) {
-    handle_message(db, &reqwest::Client::new(), PAVEL, m)
-        .await
-        .unwrap()
+    handle_message(
+        db,
+        &WebClient::new(Addresses::AllowLoopback).unwrap(),
+        PAVEL,
+        m,
+    )
+    .await
+    .unwrap()
 }
 
 fn reply_text(action: Action) -> String {

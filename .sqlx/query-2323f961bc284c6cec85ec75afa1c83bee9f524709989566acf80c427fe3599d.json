@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET fetch_status = 'ok', title = COALESCE(?, title),\n                                extracted_text = ?\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "2323f961bc284c6cec85ec75afa1c83bee9f524709989566acf80c427fe3599d"
+}

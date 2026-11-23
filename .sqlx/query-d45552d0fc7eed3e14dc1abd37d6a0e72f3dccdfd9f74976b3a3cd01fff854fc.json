@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO model_call (article_id, purpose, model, prompt_tokens, completion_tokens, cost)\n             VALUES (?, ?, ?, ?, ?, ?)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": []
+  },
+  "hash": "d45552d0fc7eed3e14dc1abd37d6a0e72f3dccdfd9f74976b3a3cd01fff854fc"
+}

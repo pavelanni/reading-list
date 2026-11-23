@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET attempts = ?, error = ?, process_status = ? WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "1bef58de0dc7a0c07a70a45422f8fc5b4f8f9e44fffc09b6b67caf76a386c583"
+}

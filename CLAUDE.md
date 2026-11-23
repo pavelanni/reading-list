@@ -36,10 +36,13 @@ Run all four before every commit.
 | ----- | ------- | ----- |
 | `sqlx` | 0.9.0 | `sqlite` (bundled, FTS5), `macros`, `migrate`, `chrono` |
 | `serde` | 1.0 | `derive` |
+| `serde_json` | 1.0 | model responses |
 | `chrono` | 0.4 | `clock`, `serde` |
 | `url` | 2.5 | |
-| `reqwest` | 0.13 | `rustls` only (aws-lc-rs backend, needs a C toolchain) |
+| `reqwest` | 0.13 | `rustls` (aws-lc-rs backend, needs a C toolchain), `json` |
 | `teloxide` | 0.17 | `rustls` only; brings its own reqwest 0.12 |
+| `thiserror` | 2.0 | typed errors (`FetchError`) |
+| `dom_smoothie` | 0.19 | Readability extraction |
 | `wiremock` | 0.6 | dev: HTTP mocks |
 
 ## Database and sqlx
@@ -51,11 +54,13 @@ the committed `.sqlx/` cache (that is how CI builds).
 After changing a query or migration:
 
 1. `echo 'DATABASE_URL=sqlite:dev.db' > .env` (gitignored, once)
-1. `sqlx database reset -y` (recreate `dev.db` from migrations)
-1. `cargo sqlx prepare -- --all-targets` and commit `.sqlx/`
+2. `sqlx database reset -y` (recreate `dev.db` from migrations)
+3. `cargo sqlx prepare -- --all-targets` and commit `.sqlx/`
 
 ## Conventions
 
 - Secrets only from environment variables; never log them (`Config`
   has a redacting `Debug`).
 - Pure logic separated from I/O so it is testable without network.
+- When explaining a Rust gotcha or practice, add it to the matching file
+  in `lessons/` (index in `lessons/README.md`).

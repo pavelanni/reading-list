@@ -3,18 +3,15 @@
 //! The mock server's host (127.0.0.1) stands in for `t.co` and friends.
 
 use reading_list::ingest::normalize::resolve_shortener_with_hosts;
-use reqwest::redirect::Policy;
+use reading_list::net::{Addresses, WebClient};
 use url::Url;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 const MOCK_HOSTS: &[&str] = &["127.0.0.1"];
 
-fn client() -> reqwest::Client {
-    reqwest::Client::builder()
-        .redirect(Policy::limited(5))
-        .build()
-        .unwrap()
+fn client() -> WebClient {
+    WebClient::new(Addresses::AllowLoopback).unwrap()
 }
 
 #[tokio::test]

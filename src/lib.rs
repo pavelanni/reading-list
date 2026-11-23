@@ -1,4 +1,9 @@
 pub mod bot;
 pub mod config;
 pub mod db;
+pub mod fetch;
 pub mod ingest;
+pub mod llm;
+pub mod net;
+pub mod status;
+pub mod worker;

@@ -3,6 +3,7 @@
 //! Deliberately thin. All decisions are in [`crate::ingest::save`]; this file
 //! only converts between `teloxide` types and ours. Verified manually.
 
+use crate::net::WebClient;
 use std::future::Future;
 use std::sync::Arc;
 
@@ -48,7 +49,7 @@ impl Notifier for TelegramNotifier {
 }
 
 /// Runs the long-polling dispatcher until it is shut down.
-pub async fn run(bot: Bot, db: Db, http: reqwest::Client, cfg: Arc<Config>) -> Result<()> {
+pub async fn run(bot: Bot, db: Db, http: WebClient, cfg: Arc<Config>) -> Result<()> {
     let handler = Update::filter_message().endpoint(on_message);
     Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![db, http, cfg])
@@ -65,7 +66,7 @@ async fn on_message(
     bot: Bot,
     msg: Message,
     db: Db,
-    http: reqwest::Client,
+    http: WebClient,
     cfg: Arc<Config>,
 ) -> ResponseResult<()> {
     let Some(user) = msg.from.as_ref() else {

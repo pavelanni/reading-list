@@ -139,6 +139,8 @@ async fn append_note(tx: &mut Transaction<'_, Sqlite>, article_id: i64, note: &s
         "UPDATE article SET
              note = CASE WHEN note IS NULL OR note = '' THEN ?1 ELSE note || char(10) || ?1 END,
              attempts = CASE WHEN process_status = 'done' THEN 0 ELSE attempts END,
+             transient_failures = CASE WHEN process_status = 'done' THEN 0 ELSE transient_failures END,
+             retry_at = CASE WHEN process_status = 'done' THEN NULL ELSE retry_at END,
              process_status = CASE WHEN process_status = 'done' THEN 'pending' ELSE process_status END
          WHERE id = ?2",
         note,

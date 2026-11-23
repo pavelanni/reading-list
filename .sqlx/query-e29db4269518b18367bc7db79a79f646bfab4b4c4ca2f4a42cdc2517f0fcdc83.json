@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "DELETE FROM story_addition WHERE article_id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "e29db4269518b18367bc7db79a79f646bfab4b4c4ca2f4a42cdc2517f0fcdc83"
+}

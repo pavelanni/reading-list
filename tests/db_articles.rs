@@ -110,6 +110,31 @@ async fn add_note_requeues_done_article() {
 }
 
 #[tokio::test]
+async fn requeued_article_gets_a_fresh_retry_budget() {
+    let db = Db::in_memory().await.unwrap();
+    let a = db
+        .save_article(article("https://example.com/a", &[], None))
+        .await
+        .unwrap();
+    sqlx::query(
+        "UPDATE article SET process_status = 'done', transient_failures = 5,
+                            retry_at = datetime('now', '+1 hour') WHERE id = ?",
+    )
+    .bind(a.article_id)
+    .execute(db.pool())
+    .await
+    .unwrap();
+    db.add_note(a.article_id, "again", &[]).await.unwrap();
+    let (failures, retry_at): (i64, Option<String>) =
+        sqlx::query_as("SELECT transient_failures, retry_at FROM article WHERE id = ?")
+            .bind(a.article_id)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+    assert_eq!((failures, retry_at), (0, None));
+}
+
+#[tokio::test]
 async fn bot_reply_roundtrip() {
     let db = Db::in_memory().await.unwrap();
     let a = db

@@ -1,0 +1,122 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET process_status = 'processing'\n               WHERE id = (SELECT id FROM article\n                           WHERE process_status = 'pending'\n                             AND (retry_at IS NULL OR retry_at <= datetime('now'))\n                           ORDER BY id LIMIT 1)\n               RETURNING id AS \"id!\", url AS \"url!\", title, extracted_text, note,\n                         share_text, fetch_status AS \"fetch_status!: FetchStatus\",\n                         attempts AS \"attempts!\",\n                         transient_failures AS \"transient_failures!\"",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "url!",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "extracted_text",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "extracted_text"
+          }
+        }
+      },
+      {
+        "name": "note",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "note"
+          }
+        }
+      },
+      {
+        "name": "share_text",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "share_text"
+          }
+        }
+      },
+      {
+        "name": "fetch_status!: FetchStatus",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "fetch_status"
+          }
+        }
+      },
+      {
+        "name": "attempts!",
+        "ordinal": 7,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "attempts"
+          }
+        }
+      },
+      {
+        "name": "transient_failures!",
+        "ordinal": 8,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "transient_failures"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "79f9efa96db3d2c939b73cda3f0f12501c24bf33735bab08fbc7afeedb76859b"
+}

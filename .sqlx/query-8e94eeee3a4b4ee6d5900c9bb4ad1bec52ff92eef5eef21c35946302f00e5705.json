@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET transient_failures = ?, error = ?, process_status = ?,\n                                retry_at = datetime('now', ?)\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 5
+    },
+    "nullable": []
+  },
+  "hash": "8e94eeee3a4b4ee6d5900c9bb4ad1bec52ff92eef5eef21c35946302f00e5705"
+}
