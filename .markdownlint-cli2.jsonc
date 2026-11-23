@@ -2,5 +2,7 @@
   "config": {
     "MD013": { "line_length": 80, "tables": false, "code_blocks": false },
     "MD029": { "style": "ordered" }
-  }
+  },
+  // Skip gitignored paths: target/, .worktrees/ (linked worktrees).
+  "gitignore": true
 }

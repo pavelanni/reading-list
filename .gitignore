@@ -5,3 +5,5 @@
 *.db-wal
 .env
 docs/dev/
+/.worktrees/
+.DS_Store

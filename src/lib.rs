@@ -4,6 +4,8 @@ pub mod db;
 pub mod fetch;
 pub mod ingest;
 pub mod llm;
+pub mod mcp;
 pub mod net;
+pub mod query;
 pub mod status;
 pub mod worker;

@@ -1,0 +1,93 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT s.id AS \"id!\", s.title, s.kind AS \"kind: StoryKind\",\n                      s.status AS \"status: StoryStatus\", s.summary, s.last_read_at,\n                      (SELECT group_concat(name, ?1) FROM (\n                           SELECT DISTINCT t.name FROM tag t\n                           JOIN article_tag at ON at.tag_id = t.id\n                           JOIN article a ON a.id = at.article_id\n                           WHERE a.story_id = s.id ORDER BY t.name))\n                          AS \"tags: String\"\n               FROM story s WHERE s.id = ?2",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "kind: StoryKind",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "name": "status: StoryStatus",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "name": "summary",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "summary"
+          }
+        }
+      },
+      {
+        "name": "last_read_at",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story",
+            "name": "last_read_at"
+          }
+        }
+      },
+      {
+        "name": "tags: String",
+        "ordinal": 6,
+        "type_info": "Text",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "87769ff27a4b2a4e3ce05f8b62c5bf415ec81da0b21e2544982756fac611b7cf"
+}

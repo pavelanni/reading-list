@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE story SET status = ?1,\n                 last_read_at = CASE WHEN ?1 = 'read' THEN CURRENT_TIMESTAMP\n                                     ELSE last_read_at END\n             WHERE id = ?2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": []
+  },
+  "hash": "82611dfd83e5b9726e77ae969c8f4bd38a7e251d913f5eac4dbad312eb91a21f"
+}

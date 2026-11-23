@@ -89,3 +89,26 @@ parameters follow the same rule.
 `sort()`. To deduplicate and keep the original order, check before pushing:
 `if !v.contains(&x) { v.push(x) }`. That is fine for a few items; use a
 `HashSet` for many.
+
+## `Display`: one source of truth, and `pad`
+
+When an enum already has `as_str()`, make `Display` call it instead of
+repeating the `match`; two copies drift when a variant is added. Write it
+with `f.pad(self.as_str())`, not `write!(f, "{}", s)`: `pad` copies the text
+directly *and* honours width and alignment, so `format!("{:<8}", kind)`
+lines up. `write_str` and `write!` ignore the width. See `StoryKind` in
+`src/db/mod.rs`.
+
+## Building one string per item
+
+`format_story_list` first collected words in a `Vec` and joined them,
+then branched on whether a second line existed. Simpler: one `format!`
+for the fixed part, `push_str` for the optional parts, one `String` per
+item, then `join("\n")` between items.
+
+- `format!` only borrows its arguments; `format!("#{}", tag.clone())`
+  copies for nothing.
+- `.to_string()` on something that is already a `String` copies it.
+- `(1..).zip(stories)` numbers items from 1 without `+ 1`; `zip` takes
+  anything iterable, so `.iter()` is not needed. Clippy suggests this
+  over a manual counter.

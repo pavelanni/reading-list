@@ -7,7 +7,7 @@ use crate::llm::prompts::{Assignment, CompareResult, StoryBrief};
 use crate::status;
 
 /// Characters of a story summary shown in the assign prompt.
-const BRIEF_CHARS: i64 = 200;
+pub(super) const BRIEF_CHARS: i64 = 200;
 
 /// An article claimed by the worker.
 #[derive(Debug, Clone, PartialEq)]

@@ -1,0 +1,86 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT a.id AS \"id!\", a.url, a.title, a.saved_at,\n                      sa.added_text AS \"added_text?\", sa.created_at AS \"added_at?\"\n               FROM article a\n               LEFT JOIN story_addition sa ON sa.article_id = a.id\n               WHERE a.story_id = ?\n               ORDER BY a.saved_at, a.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Integer",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "name": "url",
+        "ordinal": 1,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "url"
+          }
+        }
+      },
+      {
+        "name": "title",
+        "ordinal": 2,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "title"
+          }
+        }
+      },
+      {
+        "name": "saved_at",
+        "ordinal": 3,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "saved_at"
+          }
+        }
+      },
+      {
+        "name": "added_text?",
+        "ordinal": 4,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story_addition",
+            "name": "added_text"
+          }
+        }
+      },
+      {
+        "name": "added_at?",
+        "ordinal": 5,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "story_addition",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "5e58ae54abb09941ad32563bc516cf6d7c19887cd675508438246801b90a5e8e"
+}

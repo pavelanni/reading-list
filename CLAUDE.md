@@ -43,6 +43,9 @@ Run all four before every commit.
 | `teloxide` | 0.17 | `rustls` only; brings its own reqwest 0.12 |
 | `thiserror` | 2.0 | typed errors (`FetchError`) |
 | `dom_smoothie` | 0.19 | Readability extraction |
+| `rmcp` | 3.11 | `server`, `macros`, `transport-streamable-http-server`; re-exports `schemars` |
+| `axum` | 0.8 | HTTP host for MCP, bearer middleware |
+| `subtle` | 2.6 | constant-time token compare |
 | `wiremock` | 0.6 | dev: HTTP mocks |
 
 ## Database and sqlx
