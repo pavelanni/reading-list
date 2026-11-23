@@ -6,3 +6,4 @@
 .env
 docs/dev/
 /.worktrees/
+.DS_Store
