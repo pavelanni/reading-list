@@ -44,6 +44,8 @@ pub enum FetchError {
     Empty,
     #[error(transparent)]
     Blocked(#[from] Blocked),
+    #[error("too many redirects")]
+    TooManyRedirects,
 }
 
 impl From<reqwest::Error> for FetchError {
@@ -51,16 +53,24 @@ impl From<reqwest::Error> for FetchError {
         if err.is_timeout() {
             return FetchError::Timeout;
         }
+        // `successors` hands the closure `&&dyn Error`; deref once so the
+        // borrow comes from `err` itself, not from the short-lived outer `&`.
+        let chain =
+            || std::iter::successors(Some(&err as &dyn std::error::Error), |e| (*e).source());
+        // The redirect policy and the resolver report a forbidden address
+        // as `Blocked`, wrapped inside reqwest's error. Find it so it stays
+        // a permanent error instead of becoming a retried `Network`.
+        if let Some(blocked) = chain().find_map(|e| e.downcast_ref::<Blocked>()) {
+            return FetchError::Blocked(blocked.clone());
+        }
+        if err.is_redirect() {
+            return FetchError::TooManyRedirects;
+        }
         // reqwest's top-level message is generic ("error sending request");
         // the useful part ("connection refused", "dns error") is in the
         // source chain, so join the whole chain.
-        // `successors` hands the closure `&&dyn Error`; deref once so the
-        // borrow comes from `err` itself, not from the short-lived outer `&`.
-        let chain: Vec<String> =
-            std::iter::successors(Some(&err as &dyn std::error::Error), |e| (*e).source())
-                .map(ToString::to_string)
-                .collect();
-        FetchError::Network(chain.join(": "))
+        let messages: Vec<String> = chain().map(ToString::to_string).collect();
+        FetchError::Network(messages.join(": "))
     }
 }
 

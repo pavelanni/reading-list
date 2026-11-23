@@ -65,23 +65,35 @@ fn is_public_ipv4(ip: Ipv4Addr) -> bool {
             [0, ..] => false,
             [100, b, ..] if (b & 0b1100_0000) == 64 => false,
             [192, 0, 0, d] if d != 9 && d != 10 => false,
+            [198, 18..=19, _, _] => false,
+            [240..=255, ..] => false,
             _ => true,
         }
     }
 }
 
 fn is_public_ipv6(ip: Ipv6Addr) -> bool {
-    let addr_v4 = ip.to_ipv4_mapped();
-    match addr_v4 {
+    match embedded_ipv4(ip) {
         Some(a) => is_public_ipv4(a),
         None => {
             !(ip.is_loopback()
                 || ip.is_multicast()
                 || ip.is_unicast_link_local()
                 || ip.is_unique_local()
-                || ip.is_unspecified())
+                || ip.is_unspecified()
+                || ip.segments()[0] & 0xffc0 == 0xfec0
+                || matches!(ip.segments(), [0x2001, 0xdb8, ..]))
         }
     }
+}
+
+fn embedded_ipv4(ip: Ipv6Addr) -> Option<Ipv4Addr> {
+    ip.to_ipv4_mapped().or_else(|| match ip.segments() {
+        [0x64, 0xff9b, 0, 0, 0, 0, hi, lo] | [0x2002, hi, lo, ..] | [0, 0, 0, 0, 0, 0, hi, lo] => {
+            Some(Ipv4Addr::from_bits((u32::from(hi) << 16) | u32::from(lo)))
+        }
+        _ => None,
+    })
 }
 
 /// Rejects URLs whose host is an IP literal the policy forbids. Hostnames
@@ -148,12 +160,17 @@ impl Resolve for GuardedResolver {
         // `Resolving` is a boxed future: `Box::pin(async move { … })`.
         Box::pin(async move {
             let host = name.as_str();
-            let allowed: Vec<SocketAddr> = tokio::net::lookup_host((host, 0))
-                .await?
-                .filter(|addr| policy.allows(addr.ip()))
-                .collect();
+            let (allowed, rejected): (Vec<SocketAddr>, Vec<SocketAddr>) =
+                tokio::net::lookup_host((host, 0))
+                    .await?
+                    .partition(|addr| policy.allows(addr.ip()));
             if allowed.is_empty() {
-                return Err(format!("{host} has no public address").into());
+                // `Blocked` (not a string) so `FetchError` can recognize it
+                // in the source chain and not retry.
+                if let Some(addr) = rejected.first() {
+                    return Err(Blocked(addr.ip()).into());
+                }
+                return Err(format!("{host} has no addresses").into());
             }
             let addrs: Addrs = Box::new(allowed.into_iter());
             Ok(addrs)
@@ -171,7 +188,13 @@ mod tests {
 
     #[test]
     fn public_addresses_are_public() {
-        for a in ["1.1.1.1", "93.184.215.14", "2606:4700:4700::1111"] {
+        for a in [
+            "1.1.1.1",
+            "93.184.215.14",
+            "2606:4700:4700::1111",
+            "64:ff9b::808:808", // NAT64 of 8.8.8.8: the embedded IPv4 decides
+            "2002:808:808::1",  // 6to4 of 8.8.8.8
+        ] {
             assert!(is_public(ip(a)), "{a}");
         }
     }
@@ -196,6 +219,13 @@ mod tests {
             "ff02::1",            // IPv6 multicast
             "::ffff:127.0.0.1",   // IPv4-mapped loopback
             "::ffff:192.168.1.1", // IPv4-mapped private
+            "198.18.0.1",         // benchmarking, RFC 2544
+            "240.0.0.1",          // reserved, RFC 1112
+            "::7f00:1",           // IPv4-compatible 127.0.0.1 (deprecated form)
+            "64:ff9b::c0a8:101",  // NAT64 of 192.168.1.1, RFC 6052
+            "2002:c0a8:101::1",   // 6to4 of 192.168.1.1, RFC 3056
+            "fec0::1",            // site-local (deprecated)
+            "2001:db8::1",        // documentation, RFC 3849
         ];
         for a in blocked {
             assert!(!is_public(ip(a)), "{a}");

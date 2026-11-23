@@ -26,8 +26,11 @@ pub enum Processed {
     Idle,
     /// Article stored in a story.
     Done(i64),
-    /// Article back in the queue (temporary error or attempts left).
+    /// Article back in the queue with attempts left.
     Retry(i64),
+    /// Article waits until its `retry_at` after a temporary error; the
+    /// queue goes on without a pause.
+    Deferred(i64),
     /// Article gave up after too many bad answers.
     Failed(i64),
     /// Summaries paused for every article; this one is back in the queue.
@@ -88,6 +91,10 @@ pub async fn run<L: Llm, N: Notifier>(
                 tracing::info!(article_id = id, "article will be retried");
                 Some(delays.retry)
             }
+            Ok(Processed::Deferred(id)) => {
+                tracing::info!(article_id = id, "article deferred after a temporary error");
+                None
+            }
             Ok(Processed::Paused(pause)) => {
                 if reported != Some(pause) {
                     notifier.notify(&pause.message()).await;
@@ -145,7 +152,7 @@ async fn process_claimed<L: Llm>(
     {
         // No text yet: try the page again later instead of summarizing
         // from the URL alone.
-        return Ok(Processed::Retry(id));
+        return Ok(Processed::Deferred(id));
     }
 
     let err = match assign_and_compare(db, llm, article).await? {
@@ -166,7 +173,10 @@ async fn process_claimed<L: Llm>(
             let status = db
                 .record_transient(id, article.transient_failures + 1, &err.to_string())
                 .await?;
-            Ok(outcome(id, status))
+            Ok(match status {
+                ProcessStatus::Failed => Processed::Failed(id),
+                _ => Processed::Deferred(id),
+            })
         }
         Disposition::Attempt => {
             let status = db

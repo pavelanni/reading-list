@@ -29,6 +29,8 @@ Example: `is_public`, `is_public_ipv4`, `is_public_ipv6`.
 | CGNAT `100.64.0.0/10` has no stable method | Mask the second octet: `b & 0b1100_0000` |
 | `::ffff:127.0.0.1` is IPv4 in IPv6 clothing | `to_ipv4_mapped()`, then apply the IPv4 rules |
 | `to_ipv4()` also converts `::1` to `0.0.0.1` | Prefer `to_ipv4_mapped()` |
+| NAT64 `64:ff9b::/96`, 6to4 `2002::/16` and `::a.b.c.d` also embed IPv4 | `embedded_ipv4`: extract it and apply the IPv4 rules |
+| Prefix not a whole number of segments (`fec0::/10`) | Mask: `segments()[0] & 0xffc0 == 0xfec0` |
 
 Splitting into `is_public_ipv4` and `is_public_ipv6` lets the IPv6 side
 reuse the IPv4 rules for mapped addresses instead of duplicating them.

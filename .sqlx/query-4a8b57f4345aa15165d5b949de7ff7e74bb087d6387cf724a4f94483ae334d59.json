@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE article SET\n                 story_id = ?, one_line_summary = ?,\n                 error = NULL,\n                 process_status = CASE WHEN note IS ? THEN 'done' ELSE 'pending' END\n             WHERE id = ?",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "4a8b57f4345aa15165d5b949de7ff7e74bb087d6387cf724a4f94483ae334d59"
+}

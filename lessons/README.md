@@ -8,7 +8,7 @@ the example in context.
 | ------ | ------ |
 | [Ownership and borrowing](ownership-and-borrowing.md) | References that outlive their owner, `Cow`, borrow-then-move, `&&T` |
 | [Strings and options](strings-and-options.md) | `Option`-returning string methods, `then`, let chains, `let … else`, bytes vs chars, escaping untrusted text |
-| [Errors](errors.md) | `?` and `From`, `thiserror` vs `anyhow`, error source chains |
+| [Errors](errors.md) | `?` and `From`, `thiserror` vs `anyhow`, error source chains, `downcast_ref` |
 | [Async and Tokio](async-and-tokio.md) | Blocking work, `Send`, async traits, shared state, streaming bodies |
 | [Testing](testing.md) | Tests that pass too early, pure core and thin shell, mock server traps |
 | [sqlx and SQLite](sqlx-and-sqlite.md) | Compile-time checked queries, offline cache, transactions, feature flags |

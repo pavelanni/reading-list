@@ -311,7 +311,7 @@ impl Db {
         sqlx::query!(
             "UPDATE article SET
                  story_id = ?, one_line_summary = ?,
-                 error = CASE WHEN fetch_status = 'failed' THEN error END,
+                 error = NULL,
                  process_status = CASE WHEN note IS ? THEN 'done' ELSE 'pending' END
              WHERE id = ?",
             story_id,

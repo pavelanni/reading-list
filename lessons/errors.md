@@ -60,3 +60,21 @@ data.
 it in any `tracing::info!(?client)` or `{:?}` panic message. Either skip
 `Debug` on such structs (`OpenRouterClient` in `src/llm/client.rs`), or
 write it by hand and redact the secret (`Config` in `src/config.rs`).
+
+## Find a typed error inside a wrapped one
+
+Example: `impl From<reqwest::Error> for FetchError` in `src/fetch.rs`.
+
+reqwest stores the redirect policy's and the DNS resolver's errors as
+`Box<dyn Error>`, so our `Blocked` arrives wrapped and its type is gone at
+compile time. Walk the source chain and ask each link at runtime:
+
+- `std::iter::successors(Some(&err as &dyn Error), |e| (*e).source())`
+  yields every error in the chain.
+- `.find_map(|e| e.downcast_ref::<Blocked>())` returns the first link that
+  really is a `Blocked`.
+
+Matching on the text ("blocked address") would also work until someone
+rewords the message. Returning the typed error from the resolver
+(`Blocked(ip).into()`, not `format!(…).into()`) is what makes the
+downcast possible.

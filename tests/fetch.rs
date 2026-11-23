@@ -1,7 +1,7 @@
 //! `fetch_article` against a local mock server.
 
 use reading_list::fetch::{FetchError, MAX_BODY_BYTES, fetch_article};
-use reading_list::net::{Addresses, WebClient};
+use reading_list::net::{Addresses, Blocked, WebClient};
 use url::Url;
 use wiremock::matchers::path;
 use wiremock::{Mock, MockServer, ResponseTemplate};
@@ -131,9 +131,33 @@ async fn redirect_to_private_address_is_blocked() {
     let url = Url::parse(&format!("{}/jump", server.uri())).unwrap();
 
     let err = fetch_article(&guarded(), &url).await.unwrap_err();
-    // The redirect policy's error comes back through reqwest's source chain.
-    assert!(
-        err.to_string().contains("blocked address 169.254.169.254"),
-        "{err}"
+    // The redirect policy's error comes back through reqwest's source chain
+    // and is recognized there, so the worker does not retry it.
+    assert_eq!(
+        err,
+        FetchError::Blocked(Blocked("169.254.169.254".parse().unwrap()))
     );
+}
+
+#[tokio::test]
+async fn name_with_only_private_addresses_is_blocked() {
+    // `localhost` resolves to loopback only, which `PublicOnly` filters out.
+    let client = WebClient::new(Addresses::PublicOnly).unwrap();
+    let url = Url::parse("http://localhost:9/").unwrap();
+
+    let err = fetch_article(&client, &url).await.unwrap_err();
+    assert!(matches!(err, FetchError::Blocked(_)), "{err:?}");
+}
+
+#[tokio::test]
+async fn redirect_loop_is_a_permanent_error() {
+    let server = MockServer::start().await;
+    Mock::given(path("/loop"))
+        .respond_with(ResponseTemplate::new(302).insert_header("Location", "/loop"))
+        .mount(&server)
+        .await;
+    let url = Url::parse(&format!("{}/loop", server.uri())).unwrap();
+
+    let err = fetch_article(&guarded(), &url).await.unwrap_err();
+    assert_eq!(err, FetchError::TooManyRedirects);
 }

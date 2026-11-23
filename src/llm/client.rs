@@ -175,10 +175,12 @@ fn network_error(err: reqwest::Error) -> LlmError {
 
 /// OpenRouter's `{"error": {"message": …}}`, or the start of the raw body.
 fn error_message(body: &str) -> String {
-    match serde_json::from_str::<ErrorBody>(body) {
+    // Truncate both: the provider's message may echo article text.
+    let message = match serde_json::from_str::<ErrorBody>(body) {
         Ok(parsed) => parsed.error.message,
-        Err(_) => body.chars().take(MAX_ERROR_CHARS).collect(),
-    }
+        Err(_) => body.to_string(),
+    };
+    message.chars().take(MAX_ERROR_CHARS).collect()
 }
 
 /// Some models wrap JSON in a Markdown fence even in JSON mode:

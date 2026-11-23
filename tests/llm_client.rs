@@ -93,6 +93,19 @@ async fn other_status_carries_api_message() {
 }
 
 #[tokio::test]
+async fn long_api_message_is_truncated() {
+    // Provider messages can echo the prompt, which holds untrusted article text.
+    let server = MockServer::start().await;
+    let body = json!({ "error": { "message": "x".repeat(10_000) } });
+    respond(&server, ResponseTemplate::new(400).set_body_json(body)).await;
+    let err = client(&server).chat_json("s", "u").await.unwrap_err();
+    let LlmError::Http(400, message) = err else {
+        panic!("{err:?}")
+    };
+    assert_eq!(message.chars().count(), 300);
+}
+
+#[tokio::test]
 async fn non_json_content_is_bad_response() {
     let server = MockServer::start().await;
     respond(

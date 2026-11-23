@@ -79,9 +79,10 @@ pub fn classify_llm_error(err: &LlmError) -> Disposition {
     match err {
         LlmError::QuotaExhausted => Disposition::Pause(Pause::Quota),
         LlmError::Http(code @ (401 | 403 | 404), _) => Disposition::Pause(Pause::Rejected(*code)),
-        LlmError::Http(500..=599, _) | LlmError::RateLimited | LlmError::Network(_) => {
-            Disposition::Transient
-        }
+        LlmError::Http(500..=599, _)
+        | LlmError::Http(408, _)
+        | LlmError::RateLimited
+        | LlmError::Network(_) => Disposition::Transient,
         LlmError::BadResponse(_) | LlmError::Http(..) => Disposition::Attempt, // covers 400, 413, 422: the request for this article is bad
     }
 }
@@ -199,6 +200,7 @@ mod tests {
             LlmError::Http(502, String::new()),
             LlmError::Http(503, String::new()),
             LlmError::Http(504, String::new()),
+            LlmError::Http(408, String::new()), // request timeout
         ];
         for err in transient {
             assert_eq!(classify_llm_error(&err), Disposition::Transient, "{err}");
@@ -245,6 +247,7 @@ mod tests {
             FetchError::TooLarge,
             FetchError::Empty,
             FetchError::Blocked(crate::net::Blocked("10.0.0.1".parse().unwrap())),
+            FetchError::TooManyRedirects,
         ];
         for err in permanent {
             assert!(!is_transient_fetch_error(&err), "{err}");

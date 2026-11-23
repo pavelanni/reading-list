@@ -366,7 +366,7 @@ async fn rate_limit_does_not_use_an_attempt() {
     let id = env.save("page").await;
     let llm = FakeLlm::new(vec![Err(LlmError::RateLimited)]);
 
-    assert_eq!(env.process(&llm).await, Processed::Retry(id));
+    assert_eq!(env.process(&llm).await, Processed::Deferred(id));
 
     let article =
         "SELECT process_status || ' ' || CAST(attempts AS TEXT) FROM article WHERE id = ?";
@@ -542,7 +542,7 @@ async fn transient_model_error_defers_article_and_queue_moves_on() {
         compared(&["news"], "S"),
     ]);
 
-    assert_eq!(env.process(&llm).await, Processed::Retry(first));
+    assert_eq!(env.process(&llm).await, Processed::Deferred(first));
     // The first article waits; the one behind it is not blocked.
     assert_eq!(env.process(&llm).await, Processed::Done(second));
     assert_eq!(env.process(&llm).await, Processed::Idle);
@@ -563,7 +563,7 @@ async fn deferred_article_is_claimed_when_its_time_comes() {
         compared(&["news"], "S"),
     ]);
 
-    assert_eq!(env.process(&llm).await, Processed::Retry(id));
+    assert_eq!(env.process(&llm).await, Processed::Deferred(id));
     env.exec(
         "UPDATE article SET retry_at = datetime('now', '-1 seconds') WHERE id = ?",
         id,
@@ -590,7 +590,7 @@ async fn transient_fetch_error_retries_the_page_without_calling_the_model() {
     let id = env.save("unavailable").await;
     let llm = FakeLlm::new(Vec::new());
 
-    assert_eq!(env.process(&llm).await, Processed::Retry(id));
+    assert_eq!(env.process(&llm).await, Processed::Deferred(id));
     assert_eq!(llm.calls(), 0);
     let q = "SELECT fetch_status || ' ' || transient_failures || ' ' || error
              FROM article WHERE id = ?";
@@ -602,11 +602,17 @@ async fn fetch_failing_at_the_cap_is_summarized_without_text() {
     let env = Env::new().await;
     let id = env.save("unavailable").await;
     env.near_cap(id).await;
+    // Left by the previous transient failure.
+    env.exec("UPDATE article SET error = 'HTTP 503' WHERE id = ?", id)
+        .await;
     let llm = FakeLlm::new(vec![new_story("No text"), compared(&[], "S")]);
 
     assert_eq!(env.process(&llm).await, Processed::Done(id));
     let q = "SELECT fetch_status || ' ' || fetch_error FROM article WHERE id = ?";
     assert_eq!(env.get(q, id).await, "failed HTTP 503");
+    // A done article has no processing error; the reason stays in fetch_error.
+    let error = "SELECT error FROM article WHERE id = ?";
+    assert_eq!(env.get(error, id).await, "NULL");
 }
 
 #[tokio::test]
