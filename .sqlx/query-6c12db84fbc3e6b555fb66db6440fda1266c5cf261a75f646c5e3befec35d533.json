@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", url, title, story_id,\n                      fetch_status AS \"fetch_status: FetchStatus\",\n                      process_status AS \"process_status: ProcessStatus\",\n                      attempts, error\n               FROM article\n               WHERE process_status = 'failed' OR fetch_status = 'failed'\n               ORDER BY saved_at DESC, id DESC",
+  "query": "SELECT id AS \"id!\", url, title, story_id,\n                      fetch_status AS \"fetch_status: FetchStatus\",\n                      process_status AS \"process_status: ProcessStatus\",\n                      attempts, fetch_error, error\n               FROM article\n               WHERE process_status = 'failed' OR fetch_status = 'failed'\n               ORDER BY saved_at DESC, id DESC",
   "describe": {
     "columns": [
       {
@@ -81,8 +81,19 @@
         }
       },
       {
-        "name": "error",
+        "name": "fetch_error",
         "ordinal": 7,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "fetch_error"
+          }
+        }
+      },
+      {
+        "name": "error",
+        "ordinal": 8,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -103,8 +114,9 @@
       false,
       false,
       false,
+      true,
       true
     ]
   },
-  "hash": "e76fd981bee47bc3155d405cee08181f31338566d819db9edbc3b57684ef938f"
+  "hash": "6c12db84fbc3e6b555fb66db6440fda1266c5cf261a75f646c5e3befec35d533"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!\", url, original_url, title, extracted_text, note,\n                      share_text, saved_at, fetch_status AS \"fetch_status: FetchStatus\",\n                      process_status AS \"process_status: ProcessStatus\",\n                      story_id, one_line_summary, error\n               FROM article WHERE id = ?",
+  "query": "SELECT id AS \"id!\", url, original_url, title, extracted_text, note,\n                      share_text, saved_at, fetch_status AS \"fetch_status: FetchStatus\",\n                      process_status AS \"process_status: ProcessStatus\",\n                      story_id, one_line_summary, fetch_error, error\n               FROM article WHERE id = ?",
   "describe": {
     "columns": [
       {
@@ -136,8 +136,19 @@
         }
       },
       {
-        "name": "error",
+        "name": "fetch_error",
         "ordinal": 12,
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "article",
+            "name": "fetch_error"
+          }
+        }
+      },
+      {
+        "name": "error",
+        "ordinal": 13,
         "type_info": "Text",
         "origin": {
           "Table": {
@@ -163,8 +174,9 @@
       false,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "59debcd7997777ff59b0e6721da3ffc20581ff2780e4f71f32016865f7053d0b"
+  "hash": "3b7de70c322bbf5a1e163bc1002119886a564a8e629e7484d26e2f08cc86dbec"
 }

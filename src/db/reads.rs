@@ -148,7 +148,7 @@ impl Db {
             r#"SELECT id AS "id!", url, original_url, title, extracted_text, note,
                       share_text, saved_at, fetch_status AS "fetch_status: FetchStatus",
                       process_status AS "process_status: ProcessStatus",
-                      story_id, one_line_summary, error
+                      story_id, one_line_summary, fetch_error, error
                FROM article WHERE id = ?"#,
             id
         )
@@ -169,6 +169,7 @@ impl Db {
             process_status: r.process_status,
             story_id: r.story_id,
             one_line_summary: r.one_line_summary,
+            fetch_error: r.fetch_error,
             error: r.error,
         }))
     }
@@ -231,7 +232,7 @@ impl Db {
             r#"SELECT id AS "id!", url, title, story_id,
                       fetch_status AS "fetch_status: FetchStatus",
                       process_status AS "process_status: ProcessStatus",
-                      attempts, error
+                      attempts, fetch_error, error
                FROM article
                WHERE process_status = 'failed' OR fetch_status = 'failed'
                ORDER BY saved_at DESC, id DESC"#
@@ -249,7 +250,8 @@ impl Db {
         // A write first, so SQLite takes the write lock up front.
         sqlx::query!(
             "UPDATE article SET fetch_status = 'pending', process_status = 'pending',
-                                attempts = 0, error = NULL
+                                attempts = 0, error = NULL, fetch_error = NULL,
+                                transient_failures = 0, retry_at = NULL
              WHERE id = ? AND process_status <> 'processing'",
             id
         )

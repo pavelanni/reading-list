@@ -270,3 +270,92 @@ async fn get_article_returns_text_note_and_tags() {
     assert_eq!(got.tags, vec!["diy"]);
     assert_eq!(got.original_url, "https://t.co/x");
 }
+
+#[tokio::test]
+async fn reprocess_clears_backoff_and_fetch_error() {
+    let db = db().await;
+    let s = story(&db, "Story", "news", "unread", 0).await;
+    let a = article(&db, "https://ex.com/b", s, &[]).await;
+    sqlx::query(
+        "UPDATE article SET process_status = 'failed', transient_failures = 5,
+                            retry_at = datetime('now', '+1 hour'), fetch_error = 'timed out'
+         WHERE id = ?",
+    )
+    .bind(a)
+    .execute(db.pool())
+    .await
+    .unwrap();
+
+    query::reprocess_article(&db, a).await.unwrap();
+
+    let row =
+        sqlx::query("SELECT transient_failures, retry_at, fetch_error FROM article WHERE id = ?")
+            .bind(a)
+            .fetch_one(db.pool())
+            .await
+            .unwrap();
+    assert_eq!(row.get::<i64, _>(0), 0);
+    assert_eq!(row.get::<Option<String>, _>(1), None);
+    assert_eq!(row.get::<Option<String>, _>(2), None);
+    let claimed = db.claim_next_pending().await.unwrap().map(|r| r.id);
+    assert_eq!(
+        claimed,
+        Some(a),
+        "article must be ready now, not after the old retry_at"
+    );
+}
+
+#[tokio::test]
+async fn fetch_error_is_reported() {
+    let db = db().await;
+    let s = story(&db, "Story", "news", "unread", 0).await;
+    let a = article(&db, "https://ex.com/404", s, &[]).await;
+    db.store_fetch_failure(a, "HTTP 404").await.unwrap();
+
+    let failed = query::list_failed(&db).await.unwrap();
+    assert_eq!(failed[0].fetch_error.as_deref(), Some("HTTP 404"));
+    let got = query::get_article(&db, a).await.unwrap();
+    assert_eq!(got.fetch_error.as_deref(), Some("HTTP 404"));
+}
+
+#[tokio::test]
+async fn since_days_zero_means_today() {
+    let db = db().await;
+    let s = story(&db, "Earlier today", "news", "unread", 0).await;
+    sqlx::query("UPDATE story SET updated_at = datetime('now', '-1 hours') WHERE id = ?")
+        .bind(s)
+        .execute(db.pool())
+        .await
+        .unwrap();
+    let filter = ListFilter {
+        since_days: 0,
+        ..ListFilter::default()
+    };
+    assert_eq!(
+        ids(&query::list_stories(&db, &filter).await.unwrap()),
+        vec![s]
+    );
+}
+
+#[tokio::test]
+async fn search_matches_words_in_any_order() {
+    let db = db().await;
+    let s = story(&db, "Boards", "news", "unread", 0).await;
+    let a = article(&db, "https://ex.com/w", s, &[]).await;
+    db.store_fetched(a, None, "The quick zephyr board ships in May.")
+        .await
+        .unwrap();
+
+    let got = query::search(&db, "ships zephyr", 20).await.unwrap();
+    assert_eq!(
+        got.articles.iter().map(|h| h.id).collect::<Vec<_>>(),
+        vec![a]
+    );
+    assert!(
+        query::search(&db, "zephyr missing", 20)
+            .await
+            .unwrap()
+            .articles
+            .is_empty()
+    );
+}

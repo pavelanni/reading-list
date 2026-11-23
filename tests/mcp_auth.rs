@@ -90,3 +90,20 @@ async fn serve_refuses_short_token() {
         .unwrap_err();
     assert!(err.to_string().contains("MCP_BEARER_TOKEN"), "{err}");
 }
+
+#[tokio::test]
+async fn token_with_trailing_newline_still_works() {
+    // A secret read from a file often ends with a newline.
+    let db = Db::in_memory().await.unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let url = format!("http://{}/mcp", listener.local_addr().unwrap());
+    let shutdown = CancellationToken::new();
+    tokio::spawn(mcp::serve_on(
+        listener,
+        db,
+        format!("{TOKEN}\n"),
+        shutdown.clone(),
+    ));
+    let status = post(&url, Some(&format!("Bearer {TOKEN}"))).await;
+    assert!(status.is_success(), "got {status}");
+}

@@ -82,6 +82,9 @@ pub struct ArticleOut {
     pub process_status: ProcessStatus,
     pub story_id: Option<i64>,
     pub one_line_summary: Option<String>,
+    /// Why the page could not be downloaded.
+    pub fetch_error: Option<String>,
+    /// Latest processing error.
     pub error: Option<String>,
 }
 
@@ -117,14 +120,16 @@ pub struct FailedOut {
     pub fetch_status: FetchStatus,
     pub process_status: ProcessStatus,
     pub attempts: i64,
+    pub fetch_error: Option<String>,
     pub error: Option<String>,
 }
 
 pub async fn list_stories(db: &Db, filter: &ListFilter) -> Result<Vec<StorySummaryOut>> {
     let tag = filter.tag.as_deref().map(normalize_tag);
+    // "-0 days" would match only this very second; 0 means "today".
     db.list_stories(
         filter.status,
-        filter.since_days,
+        filter.since_days.max(1),
         filter.kind,
         tag.as_deref(),
     )
@@ -160,13 +165,13 @@ pub async fn get_article(db: &Db, id: i64) -> Result<ArticleOut> {
     }
 }
 
-/// Keyword search over stories and articles. The query is matched as one
-/// phrase, so FTS5 operators in it are plain words, not syntax.
+/// Keyword search over stories and articles: every word must appear, in
+/// any order. FTS5 operators in the query are plain words, not syntax.
 pub async fn search(db: &Db, query: &str, limit: u32) -> Result<SearchOut> {
     if query.trim().is_empty() {
         bail!("search query is empty");
     }
-    let phrase = fts_phrase(query);
+    let phrase = fts_query(query);
     let limit = limit.clamp(1, MAX_SEARCH_LIMIT);
     Ok(SearchOut {
         stories: db.search_stories(&phrase, limit).await?,
@@ -200,10 +205,15 @@ fn normalize_tag(tag: &str) -> String {
     tag.trim().trim_start_matches('#').to_lowercase()
 }
 
-/// Quotes user input as one FTS5 phrase: `"` inside is doubled, so no
-/// input can produce a syntax error.
-fn fts_phrase(query: &str) -> String {
-    format!("\"{}\"", query.replace('"', "\"\""))
+/// Quotes each word as its own FTS5 string (`"` inside doubled), joined
+/// by spaces, which FTS5 reads as AND. No input can produce a syntax
+/// error or an operator.
+fn fts_query(query: &str) -> String {
+    query
+        .split_whitespace()
+        .map(|word| format!("\"{}\"", word.replace('"', "\"\"")))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn story_article(row: StoryArticleRow, last_read_at: Option<&str>) -> StoryArticleOut {
@@ -293,8 +303,8 @@ mod tests {
     }
 
     #[test]
-    fn fts_phrase_doubles_quotes() {
-        assert_eq!(fts_phrase(r#"say "hi""#), r#""say ""hi""""#);
+    fn fts_query_quotes_each_word() {
+        assert_eq!(fts_query(r#"say  "hi" OR"#), r#""say" """hi""" "OR""#);
     }
 
     #[test]

@@ -65,7 +65,7 @@ struct ListParams {
     /// unread (default), read, dropped, or any.
     #[serde(default)]
     status: StatusFilter,
-    /// Only stories updated in the last N days. Default 7.
+    /// Only stories updated in the last N days (0 = today). Default 7.
     since_days: Option<u32>,
     /// Only stories with an article carrying this tag, e.g. "diy".
     tag: Option<String>,
@@ -83,7 +83,7 @@ struct IdParam {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "rmcp::schemars")]
 struct SearchParams {
-    /// Words to look for; matched as one phrase.
+    /// Words to look for; all must appear, in any order.
     query: String,
     /// Maximum hits per kind (stories, articles). Default 20, max 100.
     limit: Option<u32>,
@@ -202,8 +202,8 @@ impl ReadingListServer {
     }
 
     /// Keyword search over story titles and summaries and article titles
-    /// and text. Returns story and article IDs with snippets; the match is
-    /// in [brackets].
+    /// and text; every word must appear, in any order. Returns story and
+    /// article IDs with snippets; the match is in [brackets].
     #[tool]
     async fn search(
         &self,
@@ -296,7 +296,10 @@ pub async fn serve_on(
     token: String,
     shutdown: CancellationToken,
 ) -> Result<()> {
-    if token.trim().len() < MIN_TOKEN_LEN {
+    // Secrets read from files often end with a newline; compare what the
+    // length check saw, or every request would get 401.
+    let token = token.trim();
+    if token.len() < MIN_TOKEN_LEN {
         bail!("MCP_BEARER_TOKEN must be at least {MIN_TOKEN_LEN} characters");
     }
     // rmcp only accepts loopback Host headers by default (DNS-rebinding
