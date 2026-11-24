@@ -63,18 +63,23 @@ podman build -t reading-list .
 
 ### Create the secrets
 
-`printf '%s'` avoids a trailing newline in the stored value.
+Run these lines one at a time, not as a pasted block: each `read -rs`
+waits for you to paste one value, and in a terminal without bracketed paste
+it would take the next pasted command instead. The values, in order, are
+the Telegram bot token, your numeric Telegram user ID, the OpenRouter API
+key, and the [MCP token](#mcp-token). Nothing is echoed, and the values
+never appear on a command line, so they stay out of your shell history.
 
 ```bash
-printf '%s' 'BOT_TOKEN'   | podman secret create reading-list-telegram-token -
-printf '%s' 'USER_ID'     | podman secret create reading-list-telegram-user -
-printf '%s' 'OPENROUTER'  | podman secret create reading-list-openrouter-key -
-printf '%s' 'MCP_TOKEN'   | podman secret create reading-list-mcp-token -
+read -rs BOT_TOKEN;  printf '%s' "$BOT_TOKEN"  | podman secret create reading-list-telegram-token -
+read -rs USER_ID;    printf '%s' "$USER_ID"    | podman secret create reading-list-telegram-user -
+read -rs OPENROUTER; printf '%s' "$OPENROUTER" | podman secret create reading-list-openrouter-key -
+read -rs MCP_TOKEN;  printf '%s' "$MCP_TOKEN"  | podman secret create reading-list-mcp-token -
+unset BOT_TOKEN USER_ID OPENROUTER MCP_TOKEN
 ```
 
-To prevent the commands from being saved in your shell history, add a
-leading space (in zsh with `HIST_IGNORE_SPACE`) or read each value with
-`read -rs`.
+`printf '%s'` stores the value without a trailing newline. A token that
+ends in a newline will not match at authentication time.
 
 ### Install the Quadlet
 
@@ -87,7 +92,13 @@ loginctl enable-linger "$USER"   # keep it running after you log out
 ```
 
 Check the service with `systemctl --user status reading-list` and the
-logs with `journalctl --user -u reading-list -f`.
+logs with `journalctl --user-unit reading-list -f`. On RHEL the journal
+is kept in memory by default (no `/var/log/journal`), so user services
+log to the system journal and `journalctl --user -u` finds nothing.
+Reading the system journal requires membership in `wheel`, `adm` or
+`systemd-journal`. Alternatively, make the journal persistent with
+`sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald`;
+journald then keeps a journal per user, and `journalctl --user -u` works too.
 
 ### Change the model or the unit
 
@@ -136,7 +147,18 @@ rebuilds.
 The MCP server is at `http://<server>:8787/mcp` and requires the header
 `Authorization: Bearer <MCP_TOKEN>`.
 
+On the machine that runs the agent, set `READING_LIST_TOKEN` to the same
+value you stored in the `reading-list-mcp-token` secret:
+
+```bash
+read -rs READING_LIST_TOKEN; export READING_LIST_TOKEN
+```
+
 ### Claude Code
+
+The shell expands the variable when you run this command, so Claude Code
+saves the token itself in `~/.claude.json`. After that the variable is no
+longer needed.
 
 ```bash
 claude mcp add --transport http reading-list http://SERVER:8787/mcp \
@@ -145,7 +167,9 @@ claude mcp add --transport http reading-list http://SERVER:8787/mcp \
 
 ### OpenCode
 
-Add this to `opencode.json`:
+OpenCode reads `READING_LIST_TOKEN` from its environment at every start,
+so export it from your shell profile or a secrets manager. Add this to
+`opencode.json`:
 
 ```json
 {
