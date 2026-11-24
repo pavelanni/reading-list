@@ -37,6 +37,12 @@ jobs:
             echo "::error::tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${version}"
             exit 1
           fi
+          # buildah lowercases image names and tags, so an uppercase
+          # pre-release (1.2.0-RC.1) would not match at push time.
+          case "$version" in *[[:upper:]]*)
+            echo "::error::use a lowercase pre-release identifier, not ${version}"
+            exit 1 ;;
+          esac
           echo "version=${version}" >> "$GITHUB_OUTPUT"
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings

@@ -12,6 +12,7 @@ release's notes show how to verify its signature and provenance.
 
 ```bash
 git clone https://github.com/pavelanni/reading-list.git   # for the unit file
+cd reading-list
 podman pull ghcr.io/pavelanni/reading-list:latest
 ```
 
@@ -86,9 +87,17 @@ has other networks, publish the port on its LAN address only (see the
 
 ## Upgrade
 
-Run `podman pull` on the image tag in the unit (or rebuild from
-source), then `systemctl --user restart reading-list`. The database
-lives in the `reading-list-data` volume and survives upgrades. Schema
-migrations run at startup and only go forward, so back up the volume
-(`podman volume export reading-list-data -o backup.tar`) before an
-upgrade if you might roll back.
+The database lives in the `reading-list-data` volume and survives
+upgrades. Schema migrations run at startup and only go forward, so back
+up the volume first if you might roll back. Stop the service before the
+export: SQLite runs in WAL mode, and a copy taken while it writes can be
+inconsistent.
+
+```bash
+podman pull ghcr.io/pavelanni/reading-list:latest   # the tag in the unit
+systemctl --user stop reading-list
+podman volume export reading-list-data -o backup.tar
+systemctl --user start reading-list
+```
+
+For an image built from source, rebuild it instead of pulling.
