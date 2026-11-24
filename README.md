@@ -91,6 +91,28 @@ claude mcp add --transport http reading-list http://SERVER:8787/mcp \
   --header "Authorization: Bearer $READING_LIST_TOKEN"
 ```
 
+### Claude Desktop
+
+Desktop cannot send a custom header to a remote server, so run the
+`mcp-remote` bridge on your machine. In `claude_desktop_config.json`:
+
+```json
+"mcpServers": {
+  "reading-list": {
+    "command": "npx",
+    "args": ["-y", "mcp-remote", "https://SERVER/mcp",
+             "--header", "Authorization:${AUTH_HEADER}"],
+    "env": { "AUTH_HEADER": "Bearer <MCP_TOKEN>" }
+  }
+}
+```
+
+Use an `https://` URL (see [TLS with Caddy](docs/deployment.md)). A plain
+`http://` URL also needs `--allow-http`. To keep the token out of the file,
+start the bridge from a small shell wrapper that reads it from your
+password manager or the macOS Keychain. Desktop runs with a minimal
+`PATH`, so give the full path to `npx`.
+
 ### OpenCode
 
 OpenCode reads `READING_LIST_TOKEN` from its environment at every start,

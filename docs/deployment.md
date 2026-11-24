@@ -83,7 +83,33 @@ sudo firewall-cmd --permanent --add-port=8787/tcp && sudo firewall-cmd --reload
 
 The MCP endpoint is plain HTTP. Expose it only on your LAN: if the server
 has other networks, publish the port on its LAN address only (see the
-`PublishPort` comment in the unit).
+`PublishPort` comment in the unit). To encrypt it, put a TLS proxy in
+front, as described next.
+
+## TLS with Caddy
+
+[Caddy](https://caddyserver.com) can terminate TLS on the same host and
+forward `/mcp` to the container. `deploy/Caddyfile.example` is a working
+starting point, with a private CA over ACME (for example
+[step-ca](https://smallstep.com/docs/step-ca/)). Install `caddy`, then:
+
+1. Copy your CA's root certificate to `/etc/caddy/root_ca.crt`, readable by
+   the `caddy` user. It is public, but a CA often stores it as private.
+2. Edit the host name and ACME directory in the Caddyfile and install it as
+   `/etc/caddy/Caddyfile`.
+3. Open the HTTPS port: `sudo firewall-cmd --permanent --add-port=8443/tcp`
+   and reload. Caddy also listens on port 80 for the ACME challenge. That
+   port can stay closed to the network when the CA runs on the same host.
+4. Start it with `sudo systemctl enable --now caddy` and watch
+   `journalctl -u caddy` for "certificate obtained successfully".
+5. Publish the app on loopback only (`PublishPort=127.0.0.1:8787:8787`),
+   restart the unit and close port 8787 in the firewall.
+
+Port 8443 is used because a CA or another service may own 443. With a free
+443, remove `https_port` and the port in the site address. MCP clients that
+run on Node, such as `mcp-remote`, ignore the operating system trust store.
+Point `NODE_EXTRA_CA_CERTS` at the root certificate file when you use a
+private CA.
 
 ## Upgrade
 
