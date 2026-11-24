@@ -139,7 +139,18 @@ rebuilds.
 The MCP server is at `http://<server>:8787/mcp` and requires the header
 `Authorization: Bearer <MCP_TOKEN>`.
 
+On the machine that runs the agent, set `READING_LIST_TOKEN` to the same
+value you stored in the `reading-list-mcp-token` secret:
+
+```bash
+read -rs READING_LIST_TOKEN; export READING_LIST_TOKEN
+```
+
 ### Claude Code
+
+The shell expands the variable when you run this command, so Claude Code
+saves the token itself in `~/.claude.json`. After that the variable is no
+longer needed.
 
 ```bash
 claude mcp add --transport http reading-list http://SERVER:8787/mcp \
@@ -148,7 +159,9 @@ claude mcp add --transport http reading-list http://SERVER:8787/mcp \
 
 ### OpenCode
 
-Add this to `opencode.json`:
+OpenCode reads `READING_LIST_TOKEN` from its environment at every start,
+so export it from your shell profile or a secrets manager. Add this to
+`opencode.json`:
 
 ```json
 {
