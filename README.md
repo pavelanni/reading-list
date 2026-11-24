@@ -63,18 +63,21 @@ podman build -t reading-list .
 
 ### Create the secrets
 
-`printf '%s'` avoids a trailing newline in the stored value.
+Each `read -rs` waits for you to paste one value: the Telegram bot token,
+your numeric Telegram user ID, the OpenRouter API key, and the
+[MCP token](#mcp-token). Nothing is echoed, and the values never appear on a
+command line, so they stay out of your shell history.
 
 ```bash
-printf '%s' 'BOT_TOKEN'   | podman secret create reading-list-telegram-token -
-printf '%s' 'USER_ID'     | podman secret create reading-list-telegram-user -
-printf '%s' 'OPENROUTER'  | podman secret create reading-list-openrouter-key -
-printf '%s' 'MCP_TOKEN'   | podman secret create reading-list-mcp-token -
+read -rs BOT_TOKEN;  printf '%s' "$BOT_TOKEN"  | podman secret create reading-list-telegram-token -
+read -rs USER_ID;    printf '%s' "$USER_ID"    | podman secret create reading-list-telegram-user -
+read -rs OPENROUTER; printf '%s' "$OPENROUTER" | podman secret create reading-list-openrouter-key -
+read -rs MCP_TOKEN;  printf '%s' "$MCP_TOKEN"  | podman secret create reading-list-mcp-token -
+unset BOT_TOKEN USER_ID OPENROUTER MCP_TOKEN
 ```
 
-To prevent the commands from being saved in your shell history, add a
-leading space (in zsh with `HIST_IGNORE_SPACE`) or read each value with
-`read -rs`.
+`printf '%s'` stores the value without a trailing newline. A token that
+ends in a newline will not match at authentication time.
 
 ### Install the Quadlet
 
