@@ -1,28 +1,8 @@
-# TLS front end for the MCP server (see docs/deployment.md, "TLS with Caddy").
-# Replace reading.example.internal and the ACME directory with your own.
+# TLS front end for the MCP server (see docs/deployment.md, "Encrypt the
+# connection"). Replace reading.example.com with your own name.
 # Install to /etc/caddy/Caddyfile, then `sudo systemctl enable --now caddy`.
-{
-	# Use 443 if nothing else on the host owns it.
-	https_port 8443
-	# SELinux allows UDP only on ports 80 and 443 for web ports, so HTTP/3
-	# cannot bind 8443. MCP clients do not need it.
-	servers {
-		protocols h1 h2
-	}
-}
 
-reading.example.internal:8443 {
-	# Private CA over ACME. Delete this block to use Let's Encrypt instead.
-	# http-01 needs this host's port 80 reachable from the CA; tls-alpn-01
-	# needs the CA to reach the https port, which is not 443 here.
-	tls {
-		issuer acme {
-			dir https://ca.example.internal/acme/acme/directory
-			trusted_roots /etc/caddy/root_ca.crt
-			disable_tlsalpn_challenge
-		}
-	}
-
+reading.example.com {
 	# Expose only the MCP endpoint. The app still checks the bearer token.
 	handle /mcp* {
 		reverse_proxy 127.0.0.1:8787 {
@@ -33,4 +13,27 @@ reading.example.internal:8443 {
 	handle {
 		respond 404
 	}
+
+	# Private CA over ACME instead of Let's Encrypt (for example step-ca).
+	# Copy the CA root certificate to the path below, readable by the
+	# caddy user. tls-alpn-01 is disabled because it needs the CA to reach
+	# port 443 on this host, which may not be the port Caddy serves on.
+	# tls {
+	# 	issuer acme {
+	# 		dir https://ca.example.internal/acme/acme/directory
+	# 		trusted_roots /etc/caddy/root_ca.crt
+	# 		disable_tlsalpn_challenge
+	# 	}
+	# }
 }
+
+# If another service owns port 443, serve on another port instead. Add this
+# global block at the top of the file and write the site as
+# reading.example.com:8443. SELinux allows UDP only on 80 and 443 for web
+# ports, so HTTP/3 cannot bind there; MCP clients do not need it.
+# {
+# 	https_port 8443
+# 	servers {
+# 		protocols h1 h2
+# 	}
+# }

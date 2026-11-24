@@ -91,27 +91,39 @@ claude mcp add --transport http reading-list http://SERVER:8787/mcp \
   --header "Authorization: Bearer $READING_LIST_TOKEN"
 ```
 
-### Claude Desktop
+### Claude Desktop and other desktop apps
 
 Desktop cannot send a custom header to a remote server, so run the
-`mcp-remote` bridge on your machine. In `claude_desktop_config.json`:
+`mcp-remote` bridge on your machine. It needs Node.js. In
+`claude_desktop_config.json`:
 
 ```json
 "mcpServers": {
   "reading-list": {
     "command": "npx",
-    "args": ["-y", "mcp-remote", "https://SERVER/mcp",
+    "args": ["-y", "mcp-remote", "http://SERVER:8787/mcp", "--allow-http",
              "--header", "Authorization:${AUTH_HEADER}"],
     "env": { "AUTH_HEADER": "Bearer <MCP_TOKEN>" }
   }
 }
 ```
 
-Use an `https://` URL (see [TLS with Caddy](docs/deployment.md)). A plain
-`http://` URL also needs `--allow-http`. To keep the token out of the file,
-start the bridge from a small shell wrapper that reads it from your
-password manager or the macOS Keychain. Desktop runs with a minimal
-`PATH`, so give the full path to `npx`.
+`--allow-http` is required because `mcp-remote` refuses plain HTTP to any
+address except localhost. The token and your reading data then travel
+unencrypted, which is acceptable on a trusted home network. On any other
+network, use a VPN or HTTPS: see
+[Encrypt the connection](docs/deployment.md#encrypt-the-connection). With
+HTTPS, use an `https://` URL and drop `--allow-http`.
+
+Desktop runs with a minimal `PATH`, so give the full path to `npx`. To keep
+the token out of the file, start the bridge from a small shell wrapper that
+reads it from your password manager or the macOS Keychain.
+
+Other apps that start MCP servers from a command, such as Cursor, Windsurf
+and Cline, usually accept the same command and arguments in their own
+settings. Web-hosted clients (ChatGPT or claude.ai connectors) call your
+server from the vendor's cloud and cannot reach a LAN address. They would
+need a public HTTPS endpoint, which this guide does not cover.
 
 ### OpenCode
 
