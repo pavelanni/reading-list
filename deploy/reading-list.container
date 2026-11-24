@@ -20,7 +20,7 @@ Secret=reading-list-openrouter-key,type=env,target=OPENROUTER_API_KEY
 Secret=reading-list-mcp-token,type=env,target=MCP_BEARER_TOKEN
 # Not secret. An OpenRouter model ID from https://openrouter.ai/models;
 # an unknown ID is only noticed when the first article is summarized.
-Environment=OPENROUTER_MODEL=anthropic/claude-haiku-5.5
+Environment=OPENROUTER_MODEL=deepseek/deepseek-v4.1-flash-1017
 # Above the app's 8 s drain + 1 s for blocking tasks, before SIGKILL.
 StopTimeout=10
 
