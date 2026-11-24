@@ -177,3 +177,7 @@ a dropped story stays dropped.
 ## Development
 
 See `CLAUDE.md` for the toolchain, commands and crate versions.
+
+## License
+
+Apache License 2.0. See `LICENSE`.
