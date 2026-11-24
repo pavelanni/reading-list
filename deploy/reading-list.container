@@ -1,6 +1,6 @@
 # Rootless Quadlet unit. Install to ~/.config/containers/systemd/,
 # then `systemctl --user daemon-reload && systemctl --user start reading-list`.
-# Create the secrets first (see README.md).
+# Create the secrets first (see docs/deployment.md).
 
 [Unit]
 Description=Reading list: Telegram inbox, summaries, MCP server
@@ -8,7 +8,10 @@ Wants=network-online.target
 After=network-online.target
 
 [Container]
-Image=localhost/reading-list:latest
+# Release image (linux/amd64, linux/arm64). Pin a version such as :0.2.0
+# to choose when to upgrade; use localhost/reading-list:latest for an
+# image built from source.
+Image=ghcr.io/pavelanni/reading-list:latest
 ContainerName=reading-list
 Volume=reading-list-data:/data:Z
 # All host interfaces. To limit MCP to one network, prefix the address:
