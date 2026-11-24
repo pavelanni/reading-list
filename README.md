@@ -90,7 +90,9 @@ loginctl enable-linger "$USER"   # keep it running after you log out
 ```
 
 Check the service with `systemctl --user status reading-list` and the
-logs with `journalctl --user -u reading-list -f`.
+logs with `journalctl --user-unit reading-list -f`. On RHEL the journal
+is kept in memory by default (no `/var/log/journal`), so user services
+log to the system journal and `journalctl --user -u` finds nothing.
 
 ### Change the model or the unit
 
