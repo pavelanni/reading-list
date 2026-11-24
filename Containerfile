@@ -33,6 +33,31 @@ RUN --mount=type=cache,target=/root/.cargo/registry \
     && cp target/release/reading-list /usr/local/bin/reading-list
 
 FROM registry.access.redhat.com/ubi10/ubi-minimal
+# Labels are inherited from the base image, so UBI's name, vendor,
+# version and revision would describe this image unless overwritten.
+# CI passes VERSION and REVISION; the release workflow also sets
+# org.opencontainers.image.created.
+ARG VERSION=dev
+ARG REVISION=unknown
+LABEL name="reading-list" \
+      summary="Telegram reading inbox with story summaries and an MCP server" \
+      description="Saves links sent to a Telegram bot, summarizes them into stories via OpenRouter, and serves them to agents over MCP." \
+      vendor="Pavel Anni" \
+      maintainer="Pavel Anni" \
+      url="https://github.com/pavelanni/reading-list" \
+      version="${VERSION}" \
+      release="" \
+      vcs-ref="${REVISION}" \
+      io.k8s.display-name="reading-list" \
+      io.k8s.description="Telegram reading inbox with story summaries and an MCP server" \
+      io.openshift.tags="reading-list,mcp,telegram" \
+      org.opencontainers.image.title="reading-list" \
+      org.opencontainers.image.description="Telegram reading inbox with story summaries and an MCP server" \
+      org.opencontainers.image.source="https://github.com/pavelanni/reading-list" \
+      org.opencontainers.image.url="https://github.com/pavelanni/reading-list" \
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${REVISION}"
 COPY --from=build /usr/local/bin/reading-list /usr/local/bin/reading-list
 # A named volume copies this directory's ownership on first use.
 RUN mkdir /data && chown 1001:0 /data

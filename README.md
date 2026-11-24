@@ -49,84 +49,10 @@ openssl rand -hex 32
 
 ## Deployment
 
-The service runs as a rootless Podman container managed by a systemd
-Quadlet. These steps are for RHEL 10; other systemd distributions with
-Podman 5 work the same way.
-
-### Build the image
-
-```bash
-git clone https://github.com/pavelanni/reading-list.git
-cd reading-list
-podman build -t reading-list .
-```
-
-### Create the secrets
-
-Run these lines one at a time, not as a pasted block: each `read -rs`
-waits for you to paste one value, and in a terminal without bracketed paste
-it would take the next pasted command instead. The values, in order, are
-the Telegram bot token, your numeric Telegram user ID, the OpenRouter API
-key, and the [MCP token](#mcp-token). Nothing is echoed, and the values
-never appear on a command line, so they stay out of your shell history.
-
-```bash
-read -rs BOT_TOKEN;  printf '%s' "$BOT_TOKEN"  | podman secret create reading-list-telegram-token -
-read -rs USER_ID;    printf '%s' "$USER_ID"    | podman secret create reading-list-telegram-user -
-read -rs OPENROUTER; printf '%s' "$OPENROUTER" | podman secret create reading-list-openrouter-key -
-read -rs MCP_TOKEN;  printf '%s' "$MCP_TOKEN"  | podman secret create reading-list-mcp-token -
-unset BOT_TOKEN USER_ID OPENROUTER MCP_TOKEN
-```
-
-`printf '%s'` stores the value without a trailing newline. A token that
-ends in a newline will not match at authentication time.
-
-### Install the Quadlet
-
-```bash
-mkdir -p ~/.config/containers/systemd
-cp deploy/reading-list.container ~/.config/containers/systemd/
-systemctl --user daemon-reload
-systemctl --user start reading-list
-loginctl enable-linger "$USER"   # keep it running after you log out
-```
-
-Check the service with `systemctl --user status reading-list` and the
-logs with `journalctl --user-unit reading-list -f`. On RHEL the journal
-is kept in memory by default (no `/var/log/journal`), so user services
-log to the system journal and `journalctl --user -u` finds nothing.
-Reading the system journal requires membership in `wheel`, `adm` or
-`systemd-journal`. Alternatively, make the journal persistent with
-`sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald`;
-journald then keeps a journal per user, and `journalctl --user -u` works too.
-
-### Change the model or the unit
-
-Edit the installed copy, `~/.config/containers/systemd/reading-list.container`
-(for example `OPENROUTER_MODEL`, an ID from
-[openrouter.ai/models](https://openrouter.ai/models)), then regenerate and
-restart:
-
-```bash
-systemctl --user daemon-reload
-systemctl --user restart reading-list
-```
-
-Open port 8787 in the firewall if clients connect from other machines:
-
-```bash
-sudo firewall-cmd --permanent --add-port=8787/tcp && sudo firewall-cmd --reload
-```
-
-The MCP endpoint is plain HTTP. Expose it only on your LAN: if the server
-has other networks, publish the port on its LAN address only (see the
-`PublishPort` comment in the unit).
-
-### Upgrade
-
-Pull, rebuild the image, then `systemctl --user restart reading-list`.
-The database is in the `reading-list-data` volume and survives
-rebuilds.
+A rootless Podman container under a systemd Quadlet, from the
+multi-arch release image (`linux/amd64`, `linux/arm64`, including
+Raspberry Pi with a 64-bit OS) or built from source. See
+[docs/deployment.md](docs/deployment.md).
 
 ## Configuration
 

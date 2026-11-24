@@ -1,0 +1,147 @@
+name: release
+
+# Push a tag vX.Y.Z (matching Cargo.toml) to publish a multi-arch image
+# to GHCR, sign it, attest its provenance and create the GitHub Release.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # Rust version must match local development (see CLAUDE.md).
+  RUST_VERSION: "1.100.0"
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  check:
+    runs-on: ubuntu-26.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - id: version
+        name: Tag must match Cargo.toml
+        run: |
+          version="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match Cargo.toml version ${version}"
+            exit 1
+          fi
+          # buildah lowercases image names and tags, so an uppercase
+          # pre-release (1.2.0-RC.1) would not match at push time.
+          case "$version" in *[[:upper:]]*)
+            echo "::error::use a lowercase pre-release identifier, not ${version}"
+            exit 1 ;;
+          esac
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      # Pre-release tags (v1.0.0-rc.1) get only their own tag, not
+      # X.Y, X or latest.
+      - id: meta
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref_name, 'v0.') }}
+
+  # One native runner per architecture: Rust under QEMU emulation is
+  # several times slower. Each job pushes an arch-suffixed tag that the
+  # manifest job stitches into one multi-arch tag.
+  build:
+    needs: check
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-26.04
+          - arch: arm64
+            runner: ubuntu-26.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - id: build
+        uses: redhat-actions/buildah-build@v3.1.0
+        with:
+          image: reading-list
+          tags: ${{ env.IMAGE }}:${{ needs.check.outputs.version }}-${{ matrix.arch }}
+          containerfiles: ./Containerfile
+          labels: ${{ needs.check.outputs.labels }}
+          build-args: |
+            VERSION=${{ needs.check.outputs.version }}
+            REVISION=${{ github.sha }}
+      - uses: redhat-actions/push-to-registry@v3.0.0
+        with:
+          tags: ${{ steps.build.outputs.tags }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+  manifest:
+    needs: [check, build]
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: write # GitHub Release
+      packages: write
+      id-token: write # keyless signing and attestation
+      attestations: write
+    env:
+      VERSION: ${{ needs.check.outputs.version }}
+      TAGS: ${{ needs.check.outputs.tags }}
+      # buildah, cosign and the attest action all read this one file.
+      REGISTRY_AUTH_FILE: /home/runner/.docker/config.json
+    steps:
+      - name: Log in to GHCR
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p "$(dirname "$REGISTRY_AUTH_FILE")"
+          printf '%s' "$TOKEN" \
+            | buildah login --authfile "$REGISTRY_AUTH_FILE" \
+                -u "$GITHUB_ACTOR" --password-stdin ghcr.io
+      - id: push
+        name: Create and push the manifest list
+        run: |
+          buildah manifest create reading-list
+          for arch in amd64 arm64; do
+            buildah manifest add reading-list "docker://${IMAGE}:${VERSION}-${arch}"
+          done
+          for tag in $TAGS; do
+            buildah manifest push --all --digestfile digest reading-list "docker://${tag}"
+          done
+          echo "digest=$(cat digest)" >> "$GITHUB_OUTPUT"
+      - uses: sigstore/cosign-installer@v4.1.4
+      - name: Sign
+        run: cosign sign --yes "${IMAGE}@${{ steps.push.outputs.digest }}"
+      - uses: actions/attest-build-provenance@v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" \
+            --generate-notes --verify-tag $prerelease \
+            --notes "$(printf '%s\n\n%s\n\n%s\n' \
+              "Image: \`${IMAGE}:${VERSION}\` (linux/amd64, linux/arm64)" \
+              "Verify: \`cosign verify ${IMAGE}:${VERSION} --certificate-identity-regexp '^https://github.com/${GITHUB_REPOSITORY}/' --certificate-oidc-issuer https://token.actions.githubusercontent.com\`" \
+              "Provenance: \`gh attestation verify oci://${IMAGE}:${VERSION} --repo ${GITHUB_REPOSITORY}\`")"

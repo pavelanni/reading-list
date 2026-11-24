@@ -14,8 +14,14 @@ briefly when writing code, and leave marked learning hooks to him.
 | Tool | Version | Where pinned |
 | ---- | ------- | ------------ |
 | Rust | 1.100.0 (edition 2024) | `.github/workflows/ci.yml` and `Containerfile` `RUST_VERSION` |
+| GitHub runner | `ubuntu-26.04` (`-arm` for arm64 builds) | CI, release; `.github/actionlint.yaml` until actionlint knows the labels |
 | `actions/checkout` | v7 | CI |
 | `Swatinem/rust-cache` | v2 | CI |
+| `docker/metadata-action` | v6.2.0 | release (tags, labels only) |
+| `redhat-actions/buildah-build` | v3.1.0 | release |
+| `redhat-actions/push-to-registry` | v3.0.0 | release |
+| `sigstore/cosign-installer` | v4.1.4 | release |
+| `actions/attest-build-provenance` | v4.2.2 | release |
 | rustup | 1.29.3 | `Containerfile` `RUSTUP_VERSION` + sha256 per arch |
 
 When upgrading local Rust, update `RUST_VERSION` in CI and the
@@ -62,6 +68,17 @@ Run the first four before every commit.
 Quadlet unit: `deploy/reading-list.container`. `main` drains services
 for 8 s after SIGTERM, then gives blocking tasks 1 s; keep the unit's
 `StopTimeout` (10 s) above the sum.
+
+## Releasing
+
+1. PR that bumps `version` in `Cargo.toml` (and `Cargo.lock`); merge.
+2. `git tag -s vX.Y.Z && git push origin vX.Y.Z` on the merged `main`.
+
+`release.yml` fails unless the tag equals the `Cargo.toml` version. It
+builds each arch on a native runner (no QEMU), pushes `X.Y.Z-amd64` and
+`X.Y.Z-arm64`, merges them into the multi-arch tags with `buildah
+manifest`, signs with cosign (keyless), attests provenance and creates
+the GitHub Release with generated notes. Tags with `-` are pre-releases.
 
 ## Database and sqlx
 
