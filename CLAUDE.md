@@ -13,11 +13,13 @@ briefly when writing code, and leave marked learning hooks to him.
 
 | Tool | Version | Where pinned |
 | ---- | ------- | ------------ |
-| Rust | 1.100.0 (edition 2024) | `.github/workflows/ci.yml` `RUST_VERSION` |
+| Rust | 1.100.0 (edition 2024) | `.github/workflows/ci.yml` and `Containerfile` `RUST_VERSION` |
 | `actions/checkout` | v7 | CI |
 | `Swatinem/rust-cache` | v2 | CI |
+| rustup | 1.29.3 | `Containerfile` `RUSTUP_VERSION` + sha256 per arch |
 
-When upgrading local Rust, update `RUST_VERSION` in CI in the same commit.
+When upgrading local Rust, update `RUST_VERSION` in CI and the
+`Containerfile` in the same commit.
 
 ## Commands
 
@@ -58,7 +60,8 @@ Run the first four before every commit.
 `Containerfile` builds on UBI 10 with rustup pinned to `RUST_VERSION`
 (keep it in step with CI); runtime is `ubi10/ubi-minimal`, user 1001.
 Quadlet unit: `deploy/reading-list.container`. `main` drains services
-for 8 s after SIGTERM; keep the unit's `StopTimeout` above that.
+for 8 s after SIGTERM, then gives blocking tasks 1 s; keep the unit's
+`StopTimeout` (10 s) above the sum.
 
 ## Database and sqlx
 

@@ -11,18 +11,24 @@ After=network-online.target
 Image=localhost/reading-list:latest
 ContainerName=reading-list
 Volume=reading-list-data:/data:Z
+# All host interfaces. To limit MCP to one network, prefix the address:
+# PublishPort=192.168.1.10:8787:8787
 PublishPort=8787:8787
 Secret=reading-list-telegram-token,type=env,target=TELEGRAM_BOT_TOKEN
 Secret=reading-list-telegram-user,type=env,target=TELEGRAM_ALLOWED_USER_ID
 Secret=reading-list-openrouter-key,type=env,target=OPENROUTER_API_KEY
 Secret=reading-list-mcp-token,type=env,target=MCP_BEARER_TOKEN
-# Not secret: change the model here.
-Environment=OPENROUTER_MODEL=anthropic/claude-haiku-5-5
-# Leaves 2 s after the app's 8 s drain before SIGKILL.
+# Not secret. An OpenRouter model ID from https://openrouter.ai/models;
+# an unknown ID is only noticed when the first article is summarized.
+Environment=OPENROUTER_MODEL=anthropic/claude-haiku-5.5
+# Above the app's 8 s drain + 1 s for blocking tasks, before SIGKILL.
 StopTimeout=10
 
 [Service]
 Restart=always
+# systemd's default 100 ms would hit its start limit (5 starts in 10 s)
+# and leave the unit down for good after a burst of crashes.
+RestartSec=5
 
 [Install]
 WantedBy=default.target

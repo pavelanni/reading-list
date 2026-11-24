@@ -86,9 +86,20 @@ systemctl --user start reading-list
 loginctl enable-linger "$USER"   # keep it running after you log out
 ```
 
-Edit `OPENROUTER_MODEL` in the unit file to choose a model. Check the
-service with `systemctl --user status reading-list` and the logs with
-`journalctl --user -u reading-list -f`.
+Check the service with `systemctl --user status reading-list` and the
+logs with `journalctl --user -u reading-list -f`.
+
+### Change the model or the unit
+
+Edit the installed copy, `~/.config/containers/systemd/reading-list.container`
+(for example `OPENROUTER_MODEL`, an ID from
+[openrouter.ai/models](https://openrouter.ai/models)), then regenerate and
+restart:
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart reading-list
+```
 
 Open port 8787 in the firewall if clients connect from other machines:
 
@@ -96,7 +107,9 @@ Open port 8787 in the firewall if clients connect from other machines:
 sudo firewall-cmd --permanent --add-port=8787/tcp && sudo firewall-cmd --reload
 ```
 
-The MCP endpoint is plain HTTP. Expose it only on your LAN.
+The MCP endpoint is plain HTTP. Expose it only on your LAN: if the server
+has other networks, publish the port on its LAN address only (see the
+`PublishPort` comment in the unit).
 
 ### Upgrade
 

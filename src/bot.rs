@@ -8,7 +8,7 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use teloxide::prelude::*;
 use teloxide::types::ChatId;
 use tokio_util::sync::CancellationToken;
@@ -52,7 +52,9 @@ impl Notifier for TelegramNotifier {
 
 /// Runs the long-polling dispatcher until `shutdown` is cancelled.
 ///
-/// Stops gracefully: messages already received finish saving first.
+/// Fails at once if Telegram rejects the token: the dispatcher itself
+/// would retry polling forever, and the service would look healthy with a
+/// dead bot. Stops gracefully: messages already received finish saving.
 pub async fn run(
     bot: Bot,
     db: Db,
@@ -60,6 +62,14 @@ pub async fn run(
     cfg: Arc<Config>,
     shutdown: CancellationToken,
 ) -> Result<()> {
+    // teloxide strips the token from its network errors, so the error is
+    // safe to log.
+    let me = tokio::select! {
+        _ = shutdown.cancelled() => return Ok(()),
+        me = bot.get_me() => me.context("checking TELEGRAM_BOT_TOKEN with Telegram (getMe)")?,
+    };
+    tracing::info!(username = %me.username(), "Telegram bot connected");
+
     let handler = Update::filter_message().endpoint(on_message);
     let mut dispatcher = Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![db, http, cfg])
