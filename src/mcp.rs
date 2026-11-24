@@ -166,10 +166,12 @@ impl ReadingListServer {
         ReadingListServer { db }
     }
 
-    /// Lists stories as a numbered list. Each line has the story's stable
-    /// ID; the leading number is for display only. Defaults: unread, last
-    /// 7 days. Use status "any" with kind/tag for questions like "what DIY
-    /// ideas did I save?".
+    /// Lists stories. Each line starts with the story's
+    /// stable ID in square brackets. Refer to stories
+    /// by their ID when showing them to the user.
+    /// Defaults: unread, last 7 days.
+    /// Use status "any" with kind/tag for questions like
+    /// "what DIY ideas did I save?".
     #[tool]
     async fn list_stories(
         &self,

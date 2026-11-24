@@ -245,19 +245,17 @@ fn story_article(row: StoryArticleRow, last_read_at: Option<&str>) -> StoryArtic
 }
 
 /// Renders `list_stories` results as the text an agent shows the reader:
-/// a numbered list for display, each line carrying the stable story ID
+/// a list for display, each line carrying the stable story ID
 /// the agent must use in later calls.
-///
-/// Learning hook (Pavel): see the tests below for the exact format.
 pub fn format_story_list(stories: &[StorySummaryOut]) -> String {
     if stories.is_empty() {
         return "No stories match these filters.".to_owned();
     }
-    (1..)
-        .zip(stories)
-        .map(|(n, s)| {
+    stories
+        .iter()
+        .map(|s| {
             let mut entry = format!(
-                "{n}. [id {}] {} ({}, {}, {})",
+                "[id {}] {} ({}, {}, {})",
                 s.id,
                 s.title,
                 s.kind,
@@ -313,7 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn formats_numbered_list_with_ids() {
+    fn formats_list_with_ids() {
         let text = format_story_list(&[
             story(
                 7,
@@ -325,9 +323,9 @@ mod tests {
         ]);
         assert_eq!(
             text,
-            "1. [id 7] ESP32-C5 boards ship (news, unread, 2 articles) #diy #esp32\n   \
+            "[id 7] ESP32-C5 boards ship (news, unread, 2 articles) #diy #esp32\n   \
              Dual-band chip.\n\
-             2. [id 3] HF incident (news, unread, 2 articles)\n   \
+             [id 3] HF incident (news, unread, 2 articles)\n   \
              Tokens leaked."
         );
     }
@@ -338,7 +336,7 @@ mod tests {
         s.article_count = 1;
         assert_eq!(
             format_story_list(&[s]),
-            "1. [id 5] Quiet (news, unread, 1 article)"
+            "[id 5] Quiet (news, unread, 1 article)"
         );
     }
 
