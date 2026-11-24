@@ -83,7 +83,46 @@ sudo firewall-cmd --permanent --add-port=8787/tcp && sudo firewall-cmd --reload
 
 The MCP endpoint is plain HTTP. Expose it only on your LAN: if the server
 has other networks, publish the port on its LAN address only (see the
-`PublishPort` comment in the unit).
+`PublishPort` comment in the unit). To encrypt it, see the next section.
+
+## Encrypt the connection
+
+The bearer token and your reading data cross the network in clear text.
+Choose by where your clients are:
+
+| Clients | Option |
+| ------- | ------ |
+| Trusted home LAN | Plain HTTP. Nothing to set up. |
+| Away from home | A VPN such as WireGuard or Tailscale. Plain HTTP inside the tunnel is already encrypted. |
+| Shared or untrusted network | A TLS proxy in front of the server, below. |
+
+### TLS with Caddy
+
+[Caddy](https://caddyserver.com) can terminate TLS on the same host and
+forward `/mcp` to the container. `deploy/Caddyfile.example` is the starting
+point. Install `caddy`, then:
+
+1. Edit the host name in the Caddyfile and install it as
+   `/etc/caddy/Caddyfile`.
+2. Open ports 80 and 443 in the firewall. Caddy uses port 80 for the
+   certificate challenge.
+3. Start it with `sudo systemctl enable --now caddy` and watch
+   `journalctl -u caddy` for "certificate obtained successfully".
+4. Publish the app on loopback only (`PublishPort=127.0.0.1:8787:8787`),
+   restart the unit and close port 8787 in the firewall.
+
+Let's Encrypt only issues certificates for public names. For a host that
+the Internet cannot reach, use the DNS challenge (a Caddy build with your DNS
+provider's module) or a private CA. The commented block in the Caddyfile
+shows an ACME private CA such as
+[step-ca](https://smallstep.com/docs/step-ca/). With a private CA, copy its
+root certificate to the Caddy host, and point `NODE_EXTRA_CA_CERTS` at the
+root certificate on each client that runs `mcp-remote`: Node ignores the
+operating system trust store.
+
+If another service already owns port 443, set `https_port` in the global
+options and add the port to the site address. SELinux then blocks HTTP/3 on
+that port, so also set `protocols h1 h2`, as the example comments show.
 
 ## Upgrade
 

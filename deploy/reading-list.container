@@ -16,6 +16,9 @@ ContainerName=reading-list
 Volume=reading-list-data:/data:Z
 # All host interfaces. To limit MCP to one network, prefix the address:
 # PublishPort=192.168.1.10:8787:8787
+# Behind a TLS proxy on the same host (deploy/Caddyfile.example), publish
+# on loopback only so the token never crosses the network in plain text:
+# PublishPort=127.0.0.1:8787:8787
 PublishPort=8787:8787
 Secret=reading-list-telegram-token,type=env,target=TELEGRAM_BOT_TOKEN
 Secret=reading-list-telegram-user,type=env,target=TELEGRAM_ALLOWED_USER_ID
