@@ -13,11 +13,13 @@ briefly when writing code, and leave marked learning hooks to him.
 
 | Tool | Version | Where pinned |
 | ---- | ------- | ------------ |
-| Rust | 1.100.0 (edition 2024) | `.github/workflows/ci.yml` `RUST_VERSION` |
+| Rust | 1.100.0 (edition 2024) | `.github/workflows/ci.yml` and `Containerfile` `RUST_VERSION` |
 | `actions/checkout` | v7 | CI |
 | `Swatinem/rust-cache` | v2 | CI |
+| rustup | 1.29.3 | `Containerfile` `RUSTUP_VERSION` + sha256 per arch |
 
-When upgrading local Rust, update `RUST_VERSION` in CI in the same commit.
+When upgrading local Rust, update `RUST_VERSION` in CI and the
+`Containerfile` in the same commit.
 
 ## Commands
 
@@ -27,8 +29,9 @@ When upgrading local Rust, update `RUST_VERSION` in CI in the same commit.
 | Lint | `cargo clippy --all-targets -- -D warnings` |
 | Test | `cargo test` |
 | Markdown lint | `markdownlint-cli2 "**/*.md" "#target" "#.superpowers"` |
+| Container image | `podman build -t reading-list .` |
 
-Run all four before every commit.
+Run the first four before every commit.
 
 ## Crates
 
@@ -46,7 +49,19 @@ Run all four before every commit.
 | `rmcp` | 3.11 | `server`, `macros`, `transport-streamable-http-server`; re-exports `schemars` |
 | `axum` | 0.8 | HTTP host for MCP, bearer middleware |
 | `subtle` | 2.6 | constant-time token compare |
+| `tokio` | 1.54 | `macros`, `rt-multi-thread`, `signal`, `time` |
+| `tokio-util` | 0.7 | `CancellationToken` for shutdown |
+| `anyhow` | 1.0 | application errors |
+| `tracing`, `tracing-subscriber` | 0.1, 0.3 | `env-filter`; `RUST_LOG` |
 | `wiremock` | 0.6 | dev: HTTP mocks |
+
+## Deployment
+
+`Containerfile` builds on UBI 10 with rustup pinned to `RUST_VERSION`
+(keep it in step with CI); runtime is `ubi10/ubi-minimal`, user 1001.
+Quadlet unit: `deploy/reading-list.container`. `main` drains services
+for 8 s after SIGTERM, then gives blocking tasks 1 s; keep the unit's
+`StopTimeout` (10 s) above the sum.
 
 ## Database and sqlx
 

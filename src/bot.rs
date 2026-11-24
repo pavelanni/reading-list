@@ -6,10 +6,12 @@
 use crate::net::WebClient;
 use std::future::Future;
 use std::sync::Arc;
+use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use teloxide::prelude::*;
 use teloxide::types::ChatId;
+use tokio_util::sync::CancellationToken;
 
 use crate::config::Config;
 use crate::db::Db;
@@ -48,16 +50,46 @@ impl Notifier for TelegramNotifier {
     }
 }
 
-/// Runs the long-polling dispatcher until it is shut down.
-pub async fn run(bot: Bot, db: Db, http: WebClient, cfg: Arc<Config>) -> Result<()> {
+/// Runs the long-polling dispatcher until `shutdown` is cancelled.
+///
+/// Fails at once if Telegram rejects the token: the dispatcher itself
+/// would retry polling forever, and the service would look healthy with a
+/// dead bot. Stops gracefully: messages already received finish saving.
+pub async fn run(
+    bot: Bot,
+    db: Db,
+    http: WebClient,
+    cfg: Arc<Config>,
+    shutdown: CancellationToken,
+) -> Result<()> {
+    // teloxide strips the token from its network errors, so the error is
+    // safe to log.
+    let me = tokio::select! {
+        _ = shutdown.cancelled() => return Ok(()),
+        me = bot.get_me() => me.context("checking TELEGRAM_BOT_TOKEN with Telegram (getMe)")?,
+    };
+    tracing::info!(username = %me.username(), "Telegram bot connected");
+
     let handler = Update::filter_message().endpoint(on_message);
-    Dispatcher::builder(bot, handler)
+    let mut dispatcher = Dispatcher::builder(bot, handler)
         .dependencies(dptree::deps![db, http, cfg])
         // Edited messages, reactions etc.: ignore without logging noise.
         .default_handler(|_| async {})
-        .build()
-        .dispatch()
-        .await;
+        .build();
+    let token = dispatcher.shutdown_token();
+    let stopper = tokio::spawn(async move {
+        shutdown.cancelled().await;
+        // `shutdown` fails while the dispatcher is still starting up
+        // (`IdleShutdownError`); retry until it is running.
+        loop {
+            match token.shutdown() {
+                Ok(done) => return done.await,
+                Err(_) => tokio::time::sleep(Duration::from_millis(50)).await,
+            }
+        }
+    });
+    dispatcher.dispatch().await;
+    stopper.abort();
     Ok(())
 }
 
