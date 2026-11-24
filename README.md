@@ -63,10 +63,12 @@ podman build -t reading-list .
 
 ### Create the secrets
 
-Each `read -rs` waits for you to paste one value: the Telegram bot token,
-your numeric Telegram user ID, the OpenRouter API key, and the
-[MCP token](#mcp-token). Nothing is echoed, and the values never appear on a
-command line, so they stay out of your shell history.
+Run these lines one at a time, not as a pasted block: each `read -rs`
+waits for you to paste one value, and in a terminal without bracketed paste
+it would take the next pasted command instead. The values, in order, are
+the Telegram bot token, your numeric Telegram user ID, the OpenRouter API
+key, and the [MCP token](#mcp-token). Nothing is echoed, and the values
+never appear on a command line, so they stay out of your shell history.
 
 ```bash
 read -rs BOT_TOKEN;  printf '%s' "$BOT_TOKEN"  | podman secret create reading-list-telegram-token -
@@ -93,6 +95,10 @@ Check the service with `systemctl --user status reading-list` and the
 logs with `journalctl --user-unit reading-list -f`. On RHEL the journal
 is kept in memory by default (no `/var/log/journal`), so user services
 log to the system journal and `journalctl --user -u` finds nothing.
+Reading the system journal requires membership in `wheel`, `adm` or
+`systemd-journal`. Alternatively, make the journal persistent with
+`sudo mkdir -p /var/log/journal && sudo systemctl restart systemd-journald`;
+journald then keeps a journal per user, and `journalctl --user -u` works too.
 
 ### Change the model or the unit
 
