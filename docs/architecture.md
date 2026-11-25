@@ -164,8 +164,12 @@ stateDiagram-v2
 | Error | Examples | Treatment |
 | ----- | -------- | --------- |
 | Pause | model: HTTP 402 quota, 401/403/404 key or model | Release the article, pause all summaries, notify once |
-| Transient | fetch or model: timeout, network, HTTP 408, 429, 5xx; DB errors | Retry with backoff from 1 minute, doubling up to 1 hour, at most 8 times in all |
+| Transient | fetch or model: timeout, network, HTTP 408, 429, 5xx; DB errors while processing a claimed article | Retry with backoff from 1 minute, doubling up to 1 hour, at most 8 times in all |
 | Attempt | model: JSON that does not parse, an unknown story, other 4xx | Retry at most 3 times, then mark failed |
+
+A DB error while claiming the next article happens before any article
+is claimed, so no counter applies: the worker logs it and tries again
+after its idle delay, with no backoff and no cap.
 
 Fetch and model errors share one transient counter per article. A
 fetch that runs out of transient retries is treated as permanent (see

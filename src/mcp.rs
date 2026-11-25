@@ -76,7 +76,8 @@ struct ListParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "rmcp::schemars")]
 struct IdParam {
-    /// The stable ID from an earlier tool result, e.g. 3 from `[id 3]`.
+    /// The stable ID (a story ID for story tools, an article ID for
+    /// article tools) from an earlier tool result.
     id: i64,
 }
 
