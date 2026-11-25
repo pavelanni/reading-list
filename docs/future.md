@@ -79,6 +79,63 @@ Some possible rules:
 - `TelegramNotifier` can send a reminder today. Buttons need a callback
   handler in `bot.rs`.
 
+## Telegram commands
+
+The bot only saves links today. Commands would let it triage too, and
+the design left room for them: `query.rs` holds the logic behind the
+MCP tools so a command handler can reuse it.
+
+### Triage
+
+| Command | Does | Reuses |
+| ------- | ---- | ------ |
+| `/unread [#tag] [idea\|news]` | Unread stories with one-line summaries and Read / Drop buttons | `list_stories` |
+| `/story 12` | Summary, article links and which articles are new | `get_story` |
+| `/read 12`, `/drop 12`, `/reopen 12` | Change a story's status | `set_story_status` |
+| `/search words` | Matching stories and articles with snippets | `search` |
+| `/ideas [#tag]` | Shortcut for `kind=idea, status=any` | `list_stories` |
+| `/tags` | Tags with story counts | new query |
+
+### Reminders
+
+| Command | Does |
+| ------- | ---- |
+| `/remind daily 08:30`, `/remind weekly mon 09:00`, `/remind off` | Set the schedule |
+| `/remind max 5`, `/remind show` | Set the story limit; show the settings |
+| `/snooze 12 1w` | Hide a story from reminders for a while |
+
+### Health and housekeeping
+
+| Command | Does | Reuses |
+| ------- | ---- | ------ |
+| `/status` | Queue length, whether summaries are paused and why, last processed article | DB counts, worker pause state |
+| `/failed`, `/retry 34` | Failed articles with reasons; queue one again | `list_failed`, `reprocess_article` |
+| `/cost [today\|month]` | Tokens and dollars per model | `model_call` |
+| `/undo` | Delete the article just saved by mistake | new; MCP has no delete |
+
+### Later: asking questions
+
+`/ask what's new in the SPIFFE story?` would answer from search results
+plus a model call. It is the most attractive command and the most
+expensive one, and it repeats what MCP agents already do. Worth trying
+only after reminders and triage show whether an agent is still needed.
+
+### Design notes
+
+- **Stable IDs only.** Commands take the same story and article IDs as
+  the MCP tools (`[id 12]` in lists). Buttons make typing them rare.
+- **Commands are separate from saving.** A message starting with `/` is
+  a command; anything else goes through `handle_message` as today, so
+  message parsing does not change.
+- **Same shape as `ingest::save`.** A pure `commands.rs` turns a parsed
+  command into reply text and buttons; `bot.rs` stays a thin adapter.
+- **Parsing.** `teloxide`'s `#[derive(BotCommands)]` generates the
+  parser and `/help` text from an enum. Register the list with
+  `setMyCommands` so Telegram shows it in the `/` menu.
+- **Buttons.** Inline buttons arrive as callback queries, a second
+  update type with its own handler branch. Each must be answered, or
+  the button keeps spinning in the client.
+
 ## Household mode: more than one Telegram user
 
 Two or more people who trust each other share one library, for example
@@ -129,6 +186,5 @@ A larger change, worth it only if the feedback asks for it.
 
 ## Smaller ideas
 
-- Telegram commands for triage (`/unread`, `/read 12`). `query.rs` is
-  already shared logic for this.
-- Cost report from `model_call` (per day, per model) over MCP.
+- Cost report from `model_call` (per day, per model) over MCP, next to
+  `/cost` in Telegram.

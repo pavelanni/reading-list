@@ -180,7 +180,9 @@ is compared in constant time.
 
 A typical session is `list_stories`, then `get_story`, then
 `get_article` for full text, and finally `set_story_status`. IDs are
-stable. The `#3`-style numbers an agent shows are for display only.
+stable: each `list_stories` line starts with one (`[id 3]`), and the
+other tools return them as fields. There are no separate display
+numbers.
 
 ## Startup and shutdown
 
