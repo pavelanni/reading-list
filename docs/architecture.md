@@ -85,7 +85,7 @@ it replies within a second. Everything slow happens later in the worker.
 
 ```mermaid
 sequenceDiagram
-    actor P as Pavel
+    actor P as Owner
     participant B as bot.rs
     participant S as ingest::save
     participant D as SQLite
@@ -99,9 +99,12 @@ sequenceDiagram
 ```
 
 - Messages from anyone except `TELEGRAM_ALLOWED_USER_ID` are ignored.
-- A link that is already saved only gains the new tags.
+- A link that is already saved gains the new tags and note, and gets
+  the share text if it had none.
 - A **reply** to a bot confirmation adds a note and tags to the articles
   in that confirmation instead of saving anything new.
+- A new note on an article that is already processed queues it again,
+  so its story reflects the note. That costs two more model calls.
 - Canonical URLs have a lowercase host and no fragment, tracking
   parameters or trailing slash. They are the deduplication key.
 
@@ -133,9 +136,11 @@ sequenceDiagram
   and a one-line summary of the article. An article that adds
   information makes a `read` story `unread` again. A `dropped` story
   stays dropped.
-- A failed fetch does not stop the pipeline. The article is summarized
-  from its URL, note and share text, and the error is kept in
-  `fetch_error`.
+- A transient fetch error (timeout, network, HTTP 408, 429 or 5xx)
+  defers the article with backoff, like a transient model error. A
+  permanent fetch error, or a transient one past the retry cap, does
+  not stop the pipeline: the article is summarized from its URL, note
+  and share text, and the error is kept in `fetch_error`.
 
 ## Failure handling
 
@@ -147,17 +152,24 @@ stateDiagram-v2
     [*] --> pending: saved
     pending --> processing: claimed
     processing --> done: story updated
-    processing --> pending: transient error (backoff) or bad answer
+    processing --> pending: transient fetch or model error (backoff)
+    processing --> pending: bad model answer
     processing --> pending: quota or rejected key (pause)
-    processing --> failed: 8 transient errors or 3 bad answers
+    processing --> pending: restart (reset_stuck_processing)
+    processing --> failed: 8 transient model errors or 3 bad answers
+    done --> pending: new note
     failed --> pending: reprocess_article
 ```
 
 | Error | Examples | Treatment |
 | ----- | -------- | --------- |
-| Pause | HTTP 402 quota, 401/403/404 key or model | Release the article, pause all summaries, notify once |
-| Transient | timeouts, HTTP 5xx, 429, DB errors | Retry with backoff from 1 minute, doubling up to 1 hour, at most 8 times |
-| Attempt | the model's JSON does not parse or names an unknown story | Retry at most 3 times, then mark failed |
+| Pause | model: HTTP 402 quota, 401/403/404 key or model | Release the article, pause all summaries, notify once |
+| Transient | fetch or model: timeout, network, HTTP 408, 429, 5xx; DB errors | Retry with backoff from 1 minute, doubling up to 1 hour, at most 8 times in all |
+| Attempt | model: JSON that does not parse, an unknown story, other 4xx | Retry at most 3 times, then mark failed |
+
+Fetch and model errors share one transient counter per article. A
+fetch that runs out of transient retries is treated as permanent (see
+[Processing an article](#processing-an-article)).
 
 An article left in `processing` by a crash or shutdown is reset to
 `pending` at the next start (`reset_stuck_processing`).

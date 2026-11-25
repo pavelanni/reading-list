@@ -14,9 +14,9 @@ unread stories back on a schedule.
 ```text
 Reading list: 3 of 11 unread stories
 
-[3] Secretive: SSH keys in the Mac Secure Enclave (idea, 12 days)
-[2] TypeSafe AI launches System One Models (news, 5 days)
-[1] SPIFFE and SPIRE: the cost of workload identity (news, 2 new)
+[id 3] Secretive: SSH keys in the Mac Secure Enclave (idea, 12 days)
+[id 2] TypeSafe AI launches System One Models (news, 5 days)
+[id 1] SPIFFE and SPIRE: the cost of workload identity (news, 2 new)
 
 [Read] [Drop] [Snooze 1w] under each story
 ```
