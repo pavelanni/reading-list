@@ -76,7 +76,8 @@ struct ListParams {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[schemars(crate = "rmcp::schemars")]
 struct IdParam {
-    /// The stable ID from an earlier tool result (not a display number).
+    /// The stable ID (a story ID for story tools, an article ID for
+    /// article tools) from an earlier tool result.
     id: i64,
 }
 
@@ -256,8 +257,9 @@ impl ReadingListServer {
 #[tool_handler(
     name = "reading-list",
     instructions = "Reading list: links the reader saved from Telegram, \
-grouped into stories with summaries. Story and article IDs are stable; numbers \
-like #3 that you show the reader are display-only, so always pass IDs to tools. \
+grouped into stories with summaries. Story and article IDs are stable: \
+list_stories lines start with one ([id 3]), other tools return them as fields. \
+Pass those IDs to tools, never positions from a list you numbered yourself. \
 Typical flow: list_stories, get_story, get_article for full text, then \
 set_story_status read or dropped."
 )]

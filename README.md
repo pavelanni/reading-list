@@ -7,7 +7,8 @@ Claude Code or OpenCode read and triage the stories over MCP.
 
 One binary runs three services: the Telegram bot (long polling), the
 processing worker, and the MCP server on port 8787. Data lives in one
-SQLite file.
+SQLite file. [docs/architecture.md](docs/architecture.md) shows how
+they fit together; [docs/future.md](docs/future.md) collects ideas.
 
 ## Saving links
 
